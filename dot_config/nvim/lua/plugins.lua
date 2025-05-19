@@ -9,6 +9,14 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
+ {
+    "nvim-tree/nvim-tree.lua",
+    lazy = false,
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    config = function()
+      require("nvim-tree").setup({})
+    end,
+  },
   -- LSP + Mason
   { "williamboman/mason.nvim" },
   { "williamboman/mason-lspconfig.nvim" },
