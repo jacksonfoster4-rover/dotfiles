@@ -1,4 +1,4 @@
-[external.nvim]
+[nvim]
 type = "archive"
 url = "https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz"
 stripComponents = 1
