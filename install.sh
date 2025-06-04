@@ -10,3 +10,6 @@ fi
 chezmoi init --apply {{ .gitUser }}
 
 ~/.local/share/nvim/mason/bin/mason install pyright tsserver debugpy
+
+alias start_up="m dev_create_facilities_fixture_data && dc up -d"
+alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
