@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# Install chezmoi
-if ! command -v chezmoi &> /dev/null; then
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
-    export PATH="$HOME/.local/bin:$PATH"
-fi
-
-# Apply dotfiles
-chezmoi init --apply {{ .gitUser }}
-
-~/.local/share/nvim/mason/bin/mason install pyright tsserver debugpy
-
 alias start_up="m dev_create_facilities_fixture_data && dc up -d"
 alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
+alias mypy="dc run --workdir /web --rm --no-deps web mypy --show-error-codes"
