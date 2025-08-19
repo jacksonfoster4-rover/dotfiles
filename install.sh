@@ -4,8 +4,9 @@ set -e
 echo "Setting up dotfiles for Codespaces..."
 
 # Neovim config
-mkdir -p ~/.config
-ln -sf $(pwd)/.config/nvim ~/.config/nvim
+mkdir -p ~/.config/nvim
+cp -r $(pwd)/nvim/* ~/.config/nvim/
+
 
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
@@ -15,6 +16,9 @@ if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
     echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $(pwd)/.zshrc.append" >> ~/.zshrc
 fi
 
-source ~/.zshrc
+# Append custom bashrc without losing Codespaces defaults
+if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
+    echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $(pwd)/.bashrc.append" >> ~/.bashrc
+fi
 
 echo "Dotfiles setup complete!"

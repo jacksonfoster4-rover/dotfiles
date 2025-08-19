@@ -1,8 +1,5 @@
 require("lazy").setup({
     { "neovim/nvim-lspconfig" },
-    { "williamboman/mason.nvim", config = true },
-    { "williamboman/mason-lspconfig.nvim", config = true },
-    { "jose-elias-alvarez/null-ls.nvim" },
     { "hrsh7th/nvim-cmp" },
     { "hrsh7th/cmp-nvim-lsp" },
     { "L3MON4D3/LuaSnip" },
@@ -21,5 +18,20 @@ require("lazy").setup({
 {
   "nvim-neotest/nvim-nio",
   lazy = true,  -- load only when required
-}
+},
+{
+  "williamboman/mason.nvim",
+  build = ":MasonUpdate",
+  config = function()
+    require("mason").setup()
+  end,
+},
+{
+  "williamboman/mason-lspconfig.nvim",
+  config = function()
+    require("mason-lspconfig").setup({
+      ensure_installed = { "pyright", "ts_ls", "eslint", "efm" },
+    })
+  end,
+},
 })
