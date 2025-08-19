@@ -1,5 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-alias start_up="m dev_create_facilities_fixture_data && dc up -d"
-alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
-alias mypy="dc run --workdir /web --rm --no-deps web mypy --show-error-codes"
+echo "Setting up dotfiles for Codespaces..."
+
+# Neovim config
+mkdir -p ~/.config
+ln -sf $(pwd)/.config/nvim ~/.config/nvim
+
+# Git config (safe to overwrite)
+ln -sf $(pwd)/.gitconfig ~/.gitconfig
+
+# Append custom zshrc without losing Codespaces defaults
+if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
+    echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $(pwd)/.zshrc.append" >> ~/.zshrc
+fi
+
+source ~/.zshrc
+
+echo "Dotfiles setup complete!"
