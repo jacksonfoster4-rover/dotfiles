@@ -1,1 +1,1 @@
-source .zshrc.append
+source $(pwd)/.zshrc.append
