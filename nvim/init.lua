@@ -11,7 +11,7 @@ vim.opt.rtp:prepend(lazypath)
 
 -- format on save
 vim.api.nvim_create_autocmd("BufWritePost", {
-    patterns = {"*.py", "*.ts", "*.tsx", *.js"},
+    pattern = {"*.py", "*.ts", "*.tsx", "*.js"},
     callback = function()
         vim.lsp.buf.format({ async = false })
     end,

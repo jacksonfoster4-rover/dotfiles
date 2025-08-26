@@ -7,6 +7,9 @@ echo "Setting up dotfiles for Codespaces..."
 mkdir -p ~/.config/nvim
 cp -r $(pwd)/nvim/* ~/.config/nvim/
 
+# Install plugins in headless mode
+nvim --headless "$@" +qa
+
 
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
