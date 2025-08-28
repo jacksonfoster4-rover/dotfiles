@@ -1,0 +1,3 @@
+alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
+alias makeschemas="m generate_schemas && (cd src/frontend/rsdk && yarn run build:apiClient)"
+alias followlogs="dc logs -f -n 0"
