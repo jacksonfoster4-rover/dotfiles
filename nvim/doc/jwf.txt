@@ -1,0 +1,13 @@
+*jwf*
+
+Searching files
+======================
+Search for files
+:Telescope find_files
+
+Fuzzy search in file
+:Telescope live_grep
+
+
+
+

@@ -10,6 +10,9 @@ cp -r $(pwd)/nvim/* ~/.config/nvim/
 # Install plugins in headless mode
 nvim --headless "$@" +qa
 
+# config help text
+nvim --headless +"helptags ~/.config/nvim/doc" +qa
+
 
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
