@@ -17,23 +17,25 @@ nvim --headless +"helptags ~/.config/nvim/doc" +qa
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
 
+DOTFILES_ROOT=/workspaces/.codespaces/.persistedshare
+
 # shared bashrc and zshrc config
 if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" ~/.bashrc; then
-    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $(pwd)/.sharedrc.append" >> $(pwd)/.bashrc.append
+    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.bashrc.append
 fi
 
 if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" ~/.zshrc; then
-    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $(pwd)/.sharedrc.append" >> $(pwd)/.zshrc.append
+    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.zshrc.append
 fi
 
 # Append custom zshrc without losing Codespaces defaults
 if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
-    echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $(pwd)/.zshrc.append" >> ~/.zshrc
+    echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $DOTFILES_ROOT/.zshrc.append" >> ~/.zshrc
 fi
 
 # Append custom bashrc without losing Codespaces defaults
 if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
-    echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $(pwd)/.bashrc.append" >> ~/.bashrc
+    echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
 
 
