@@ -8,6 +8,25 @@ Search for files
 Fuzzy search in file
 :Telescope live_grep
 
+Navigation
+=====================
+Go to definition
+\gd
+Ctrl-i and Ctrl-o to return
+
+Go to declaration
+\gD
+Ctrl-i and Ctrl-o to return
+
+Open Tree
+:NvimTreeOpen
+
+Focus Tree
+:NvimTreeFocus
+
+Toggle Tree
+:NvimTreeToggle
+
 
 
 
