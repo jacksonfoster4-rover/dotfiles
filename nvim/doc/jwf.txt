@@ -3,29 +3,50 @@
 Searching files
 ======================
 Search for files
+<leader>f
 :Telescope find_files
 
 Fuzzy search in file
+<leader>ff
 :Telescope live_grep
 
+Search
+=====================
 Navigation
 =====================
 Go to definition
-\gd
-Ctrl-i and Ctrl-o to return
+<leader>gd
+Ctrl-o to return and Ctrl-i to go forward 
 
 Go to declaration
-\gD
-Ctrl-i and Ctrl-o to return
+<leader>gD
+Ctrl-o to return and Ctrl-i to go forward 
+
+Hover
+<leader>h
 
 Open Tree
+<leader>to
 :NvimTreeOpen
 
 Focus Tree
+<leader>tf
 :NvimTreeFocus
 
 Toggle Tree
+<leader>tt
 :NvimTreeToggle
+
+Nav cursot to current open file
+:NvimTreeFindFile
+
+:NvimTreeCollapse
+
+Navigate Focus
+<Ctrl-w>h (left)
+<Ctrl-w>l (right)
+<Ctrl-w>j (down)
+<Ctrl-w>k (up)
 
 
 

@@ -24,6 +24,9 @@ vim.diagnostic.config({
     float = { border = "rounded" },
 })
 
+vim.g.mapleader = ";"
+vim.g.maplocalleader = ";"
+
 require("plugins")
 require("keymaps")
 require("lsp")
