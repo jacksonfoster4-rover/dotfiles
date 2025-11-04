@@ -17,7 +17,7 @@ nvim --headless +"helptags ~/.config/nvim/doc" +qa
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
 
-DOTFILES_ROOT=/workspaces/.codespaces/.persistedshare
+DOTFILES_ROOT=/workspaces/.codespaces/.persistedshare/dotfiles
 
 # shared bashrc and zshrc config
 if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" ~/.bashrc; then
