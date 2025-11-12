@@ -1,1 +1,1 @@
-source $(pwd)/.zshrc.append
+export FOO_BAR="bash test"
