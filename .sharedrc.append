@@ -1,5 +1,5 @@
 alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
 alias makeschemas="m generate_api_schemas && (cd src/frontend/rsdk && yarn run build:apiClient)"
-alias followlogs="dc logs -f -n 0"
+alias followlogs="dc logs -f -n 20"
 alias fetchandreset="git fetch && git reset --hard origin/master"
 alias restartcontainers="dc down && dc up -d"
