@@ -3,3 +3,7 @@ alias makeschemas="m generate_api_schemas && (cd src/frontend/rsdk && yarn run b
 alias followlogs="dc logs -f -n 20"
 alias fetchandreset="git fetch && git reset --hard origin/master"
 alias restartcontainers="dc down && dc up -d"
+alias msp="m shell_plus"
+
+chmod +x ./service_health_poll.sh
+sh ./service_health_poll.sh

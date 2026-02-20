@@ -11,7 +11,7 @@ cp -r $(pwd)/nvim/* ~/.config/nvim/
 nvim --headless "$@" +qa
 
 # config help text
-nvim --headless +"helptags ~/.config/nvim/doc" +qa
+nvim --headless +"helptags ALL" +qa
 
 
 # Git config (safe to overwrite)

@@ -24,11 +24,14 @@ vim.diagnostic.config({
     float = { border = "rounded" },
 })
 
+vim.api.nvim_command("helptags ALL")
+
 vim.g.mapleader = ";"
 vim.g.maplocalleader = ";"
 
-require("plugins")
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
+require("lazy").setup('plugins')
+
 require("keymaps")
-require("lsp")
-require("dap")
-require("trees")

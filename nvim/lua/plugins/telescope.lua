@@ -1,4 +1,5 @@
 return {
+{
   "nvim-telescope/telescope.nvim",
   dependencies = {
     "nvim-lua/plenary.nvim",
@@ -27,4 +28,5 @@ return {
     telescope.load_extension("fzf")
     telescope.load_extension("live_grep_args")
   end,
+},
 }
