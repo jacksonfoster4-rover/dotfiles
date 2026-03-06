@@ -1,15 +1,16 @@
 export DOTFILES_PATH="/workspaces/.codespaces/.persistedshare/dotfiles"
-alias start_rxn="(cd src/frontend/reactNativeApp && yarn start)"
+alias yarn="pnpm"
+alias start_rxn="(cd src/frontend/reactNativeApp && pnpm start)"
 alias preload_rxn="curl -o /dev/null 'http://localhost:8081/index.bundle?platform=ios&dev=true&lazy=true&minify=false&inlineSourceMap=false&modulesOnly=false&runModule=true&excludeSource=true&sourcePaths=url-server&app=com.rover.Rover-com' \
 -H 'Host: localhost:8081' \
 -H 'Connection: keep-alive' \
 -H 'Accept: multipart/mixed' \
 -H 'User-Agent: Rover.com/3 CFNetwork/1474 Darwin/25.3.0' \
 -H 'Accept-Language: en-US,en;q=0.9'"
-alias makeschemas="m generate_api_schemas && (cd src/frontend/rsdk && yarn run build:apiClient)"
+alias makeschemas="m generate_api_schemas && (cd src/frontend/rsdk && pnpm run build:apiClient)"
 alias followlogs="dc logs -f -n 20"
 alias fetchandreset="git fetch && git reset --hard origin/master"
 alias restartcontainers="dc down && dc up -d"
 alias msp="m shell_plus"
 
-(cd $DOTFILES_PATH && chmod +x ./health_poll.sh && sh ./health_poll.sh)
+# (cd $DOTFILES_PATH && chmod +x ./health_poll.sh && sh ./health_poll.sh)
