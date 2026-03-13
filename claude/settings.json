@@ -1,0 +1,14 @@
+{
+    "permissions": {
+      "allow": [
+        "Bash(yarn:*)",
+        "Bash(start_rxn:*)",
+        "Bash(preload_rxn:*)",
+        "Bash(makeschemas:*)",
+        "Bash(followlogs:*)",
+        "Bash(restartcontainers:*)",
+        "Bash(msp:*)",
+        "Bash(staging:*)"
+      ]
+    }
+  }

@@ -13,5 +13,3 @@ alias fetchandreset="git fetch && git reset --hard origin/master"
 alias restartcontainers="dc down && dc up -d"
 alias msp="m shell_plus"
 alias staging="k9s --context staging-a"
-
-# (cd $DOTFILES_PATH && chmod +x ./health_poll.sh && sh ./health_poll.sh)
