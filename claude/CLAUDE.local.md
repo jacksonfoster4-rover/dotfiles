@@ -18,6 +18,10 @@ If I indicate we are working on one of the projects listed in that doc:
 2. Write its full contents to `/tmp/project-specific-prompts.md`, overwriting any previous version.
 3. Reference that file throughout the session. Do not rely on memory — re-fetch at the start of each relevant session.
 
+## Git Push & Commit Policy
+
+Never push to a branch or update a PR unless I explicitly tell you to in the current session. Do not assume that approval to commit also means approval to push. I will tell you when to push individual commits. Always defer to me on both committing and pushing.
+
 ## Auto-Run Commands
 
 Run these automatically when the relevant conditions are met. Do not ask for confirmation.
@@ -28,7 +32,7 @@ When any serializer file is changed (e.g. `**/serializers.py` or `**/serializers
 
 ### SSR Restart
 
-When code in `react-lib` or `react-app` is changed, run `restart ssr`.
+**REQUIRED:** After completing any task that involved changes to files in `src/frontend/react-lib/` or `src/frontend/react-app/`, run `restart ssr`. Do not skip this step.
 
 ### React Native Server
 
@@ -89,6 +93,25 @@ Key traits:
 - **Deployment section** — 1-2 bullets each for "How can I tell if this change has been deployed?" and "Did anything break?"
 - **Code Review Instructions** — "Before testing" (setup: fixtures, shell commands, config) and "Acceptance tests" (checkboxes with exact steps).
 - **Acceptance tests are specific and reproducible.** Include exact API endpoints, JSON payloads, shell commands, navigation steps.
+- Never check off the acceptance tests
+- Never fill out the accessibility section of the PR template — leave it exactly as templated
+- Never fill out or indicate anything about AI usage in the PR template — leave it exactly as templated
+- Both sections are for the PR author to complete; do not touch them
+
+## Frontend Code Style
+
+### Business Logic Placement
+
+When building a new frontend page, defer business logic to the backend as much as possible — the frontend should primarily handle rendering and user interaction. When working on an existing page, use your judgement based on the patterns already in place.
+
+### Colors
+
+Never use hardcoded hex colors or other raw color values. Always resolve colors in this order of preference:
+
+1. **Rover theme tokens** via the `useTheme()` hook — theme values are defined in `src/frontend/kibble/tokens/build/rover/es6/theme.ts`. Defer to these pregenerated constants as much as possible.
+2. **`RoverColor` enum** — check for a matching entry before reaching for anything else.
+
+If a color cannot be found in either the theme or `RoverColor`, flag it rather than falling back to a hardcoded value.
 
 ## Prompt Logging
 
