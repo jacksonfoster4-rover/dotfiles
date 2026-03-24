@@ -18,6 +18,10 @@ If I indicate we are working on one of the projects listed in that doc:
 2. Write its full contents to `/tmp/project-specific-prompts.md`, overwriting any previous version.
 3. Reference that file throughout the session. Do not rely on memory — re-fetch at the start of each relevant session.
 
+## MCP Server Authentication
+
+If you encounter an authentication error, permissions error, or connection failure with any MCP server (Atlassian, Statsig, etc.), **stop immediately**. Do not attempt to work around it, skip the step, or proceed without the data. Instead, tell me exactly which MCP server failed and what the error was, and wait for me to resolve it before continuing.
+
 ## Git Push & Commit Policy
 
 Never push to a branch or update a PR unless I explicitly tell you to in the current session. Do not assume that approval to commit also means approval to push. I will tell you when to push individual commits. Always defer to me on both committing and pushing.
@@ -32,7 +36,7 @@ When any serializer file is changed (e.g. `**/serializers.py` or `**/serializers
 
 ### SSR Restart
 
-**REQUIRED:** After completing any task that involved changes to files in `src/frontend/react-lib/` or `src/frontend/react-app/`, run `restart ssr`. Do not skip this step.
+**REQUIRED:** After completing any task that involved changes to files in `src/frontend/react-lib/`, run `restart ssr`. Do not skip this step.
 
 ### React Native Server
 
@@ -117,7 +121,7 @@ If a color cannot be found in either the theme or `RoverColor`, flag it rather t
 
 Keep a verbatim running log of substantial prompts I give you. Do not paraphrase, summarize, or alter my language. Group prompts from the same task under a single timestamp.
 
-Only include prompts that represent meaningful direction or requests. Skip simple answers to your clarifying questions (e.g. "yes", "no", "the second one").
+Only include prompts that represent meaningful direction or requests. Skip simple answers to your clarifying questions (e.g. "yes", "no", "the second one"). If a prompt contains the word `HIDDEN`, omit it from the log entirely.
 
 Format each prompt as a markdown blockquote, not backticks:
 ```
