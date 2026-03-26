@@ -6,11 +6,14 @@ At the start of every session, do the following automatically without being aske
 
 ### Verify Containers Are Running
 
-Before starting any task, check that all containers are up by running:
+Before starting any task, check both endpoints:
 ```
-curl -s -o /dev/null -w "%{http_code}" 127.0.0.1:8001/system/ready/
+curl -s -o /dev/null -w "%{http_code}" 127.0.0.1:9000/system/ready/
+curl -s -o /dev/null -w "%{http_code}" 127.0.0.1:8000/systems/healthcheck/
 ```
-If the response is not `200`, run `dc up -d` and wait for it to complete before proceeding.
+- If **both** return non-200: run `dc up -d` and wait for it to complete before proceeding.
+- If only **`:9000`** returns non-200: run `restart ssr`.
+- If only **`:8000`** returns non-200: run `restart web`.
 
 ### Load Jira Ticket from Branch
 
@@ -175,3 +178,4 @@ Format each prompt as a markdown blockquote with elapsed time, not backticks:
 **Confluence docs** — Append the same format as a "Prompts" section at the bottom of the page.
 
 **Jira tickets** — Add the prompts as a comment on the ticket when creating it.
+
