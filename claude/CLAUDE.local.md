@@ -4,6 +4,14 @@
 
 At the start of every session, do the following automatically without being asked.
 
+### Verify Containers Are Running
+
+Before starting any task, check that all containers are up by running:
+```
+curl -s -o /dev/null -w "%{http_code}" 127.0.0.1:8001/system/ready/
+```
+If the response is not `200`, run `dc up -d` and wait for it to complete before proceeding.
+
 ### Load Jira Ticket from Branch
 
 If the current git branch name matches `DEV-\d+` (e.g. `DEV-143043`), extract that ticket ID and fetch the full Jira ticket using the Atlassian MCP tool. Keep it in context for the duration of the session — use it to inform PR descriptions, commit messages, code decisions, and any authoring.
@@ -26,6 +34,14 @@ If you encounter an authentication error, permissions error, or connection failu
 
 Never push to a branch or update a PR unless I explicitly tell you to in the current session. Do not assume that approval to commit also means approval to push. I will tell you when to push individual commits. Always defer to me on both committing and pushing.
 
+### Rebasing
+
+When I ask you to rebase, first disable the VS Code interactive rebase editor by running:
+```
+git config --global sequence.editor "cat"
+```
+Then proceed with the rebase. This prevents VS Code from hijacking the rebase with its interactive editor.
+
 ## Auto-Run Commands
 
 Run these automatically when the relevant conditions are met. Do not ask for confirmation.
@@ -36,7 +52,7 @@ When any serializer file is changed (e.g. `**/serializers.py` or `**/serializers
 
 ### SSR Restart
 
-**REQUIRED:** After completing any task that involved changes to files in `src/frontend/react-lib/`, run `restart ssr`. Do not skip this step.
+**REQUIRED:** After completing any task that involved changes to files in `src/frontend/react-lib/` or `src/frontend/react-app/`, run `restart ssr`. Do not skip this step.
 
 ### React Native Server
 
@@ -123,7 +139,17 @@ Keep a verbatim running log of substantial prompts I give you. Do not paraphrase
 
 Only include prompts that represent meaningful direction or requests. Skip simple answers to your clarifying questions (e.g. "yes", "no", "the second one"). If a prompt contains the word `HIDDEN`, omit it from the log entirely.
 
-Format each prompt as a markdown blockquote, not backticks:
+### Tracking Prompts and Timing Across the Session
+
+Start tracking prompts from the very beginning of the session — not just after entering plan mode. When a prompt triggers plan mode, all prior substantial prompts from the session should be included in the log.
+
+Persist everything to `/tmp/claude-session-log.md`. Append each new prompt immediately. For each prompt, also track how long Claude spent working on it (wall-clock time from receiving the prompt to completing the response/task). Record the elapsed time inline with the prompt. You should also dump any relevant session data (ID, date, etc.) so that upon compaction or clearing context, you can successfully recreate the prompt history.
+
+On compaction, read from this file to recover the full history.
+
+### Format
+
+Format each prompt as a markdown blockquote with elapsed time, not backticks:
 ```
 ---
 
@@ -133,14 +159,19 @@ Format each prompt as a markdown blockquote, not backticks:
 
 > Exact prompt text here.
 
+*Claude elapsed time: 1m 32s*
+
 > Another prompt here.
+
+*Claude elapsed time: 4m 15s*
+
+**Total Claude elapsed time: 5m 47s**
 ```
 
-Append prompts to whatever artifact is being worked on:
+### Where to Append
 
 **PRs** — Append a "Claude Prompts" appendix to the PR description and update it each time you push or update the description.
 
 **Confluence docs** — Append the same format as a "Prompts" section at the bottom of the page.
 
 **Jira tickets** — Add the prompts as a comment on the ticket when creating it.
-
