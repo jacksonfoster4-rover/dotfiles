@@ -29,6 +29,13 @@ vim.api.nvim_command("helptags ALL")
 vim.g.mapleader = ";"
 vim.g.maplocalleader = ";"
 
+-- Use the system clipboard as the default yank/paste register.
+-- This means y, d, p etc. all read/write the macOS clipboard automatically,
+-- so text copied in Neovim is immediately pasteable in the browser, Slack, etc.
+-- and vice versa. Requires a clipboard provider; on macOS this uses pbcopy/pbpaste
+-- which are built-in, so no extra setup is needed.
+vim.opt.clipboard = "unnamedplus"
+
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 

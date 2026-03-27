@@ -1,53 +1,433 @@
-*jwf*
+*jwf*    Jackson's Neovim Reference
+Last updated: 2025
 
-Searching files
-======================
-Search for files
-<leader>f
-:Telescope find_files
+Leader key is  ;  (semicolon)
+Open this file: :help jwf
 
-Fuzzy search in file
-<leader>ff
-:Telescope live_grep
+================================================================================
+CONTENTS                                                          *jwf-contents*
 
-Search
-=====================
-Navigation
-=====================
-Go to definition
-<leader>gd
-Ctrl-o to return and Ctrl-i to go forward 
+  1. File Tree .......................... |jwf-tree|
+  2. Search & Find ...................... |jwf-search|
+  3. LSP Navigation ..................... |jwf-lsp|
+  4. Diagnostics ........................ |jwf-diagnostics|
+  5. Git — Changed Files & History ...... |jwf-git|
+  6. Git — Hunk Actions ................. |jwf-hunks|
+  7. Terminal / Shell ................... |jwf-terminal|
+  8. Window Navigation .................. |jwf-windows|
+  9. Debugging (DAP) .................... |jwf-debug|
+ 10. Useful Vim Primitives .............. |jwf-vim|
 
-Go to declaration
-<leader>gD
-Ctrl-o to return and Ctrl-i to go forward 
+================================================================================
+1. FILE TREE                                                         *jwf-tree*
 
-Hover
-<leader>h
+The file tree (nvim-tree) is a sidebar showing your project directory.
+It is separate from the editor — you must "focus" it to interact with it.
 
-Open Tree
-<leader>to
-:NvimTreeOpen
+  ;tt    Toggle tree open/closed
+  ;to    Open the tree (keeps cursor in your code buffer)
+  ;tc    Close the tree
+  ;tf    Move your cursor into the tree panel
+  ;tn    Reveal the current file in the tree
+           Use this when you opened a file via search and want to see where
+           it lives in the folder structure.
 
-Focus Tree
-<leader>tf
-:NvimTreeFocus
+Inside the tree panel:
+  Enter     Open file / expand folder
+  o         Open file
+  a         Create new file (type name, include / at end for a folder)
+  d         Delete file
+  r         Rename file
+  x         Cut file
+  c         Copy file
+  p         Paste file
+  R         Refresh the tree (picks up external changes)
+  I         Toggle hidden files (.dotfiles, node_modules)
+  H         Toggle git-ignored files
+  q         Close the tree
 
-Toggle Tree
-<leader>tt
-:NvimTreeToggle
+:NvimTreeFindFile   Scroll the tree to the current buffer's file
+:NvimTreeCollapse   Collapse all open folders
 
-Nav cursot to current open file
-:NvimTreeFindFile
+Navigate focus between panels:
+  Ctrl-w h    Focus left panel
+  Ctrl-w l    Focus right panel
+  Ctrl-w j    Focus panel below
+  Ctrl-w k    Focus panel above
 
-:NvimTreeCollapse
+================================================================================
+2. SEARCH & FIND                                                    *jwf-search*
 
-Navigate Focus
-<Ctrl-w>h (left)
-<Ctrl-w>l (right)
-<Ctrl-w>j (down)
-<Ctrl-w>k (up)
+All search uses Telescope — a fuzzy finder that shows a live-updating list
+as you type. Arrow keys or Ctrl-j/k navigate the results. Enter opens it.
 
+  ;f     Find file by name (searches filenames recursively from project root)
+           Tip: you can type partial paths, e.g. "comp/bu" to match
+           "src/components/Button.tsx"
 
+  ;ff    Search for a string inside all files (live grep)
+           Supports ripgrep flags — QUOTE your search term when using flags:
 
+           Search only Python files:
+             "grooming" -t py
 
+           Search only TypeScript files:
+             "MyFunc" -t ts
+
+           Exclude a file type:
+             "grooming" -g !*.json
+
+           Exclude a directory:
+             "grooming" -g !some/dir/**
+
+           Multiple exclusions:
+             "grooming" -g !*.json -g !migrations/**
+
+           Without quotes the whole prompt is treated as the literal search
+           string and the flags are ignored. node_modules, venv, static/dist,
+           and __pycache__ are excluded automatically on every search.
+
+  ;fc    Search for the word currently under your cursor across all files
+           Useful for finding every usage of a variable or function name
+           without typing it out.
+
+  ;fs    Fuzzy search inside the current open file only
+           Good for jumping to a function or class in a long file.
+
+  ;sr    Project-wide search AND replace (nvim-spectre)
+           Opens a panel where you can preview every match before replacing.
+           Supports regex. Press <leader>R inside spectre to execute the
+           replace across all files.
+
+Telescope universal controls:
+  Ctrl-c or Esc    Close the picker without opening anything
+  Ctrl-u            Scroll the preview pane up
+  Ctrl-d            Scroll the preview pane down
+  Ctrl-q            Send all results to quickfix list (then :cn/:cp to navigate)
+  Tab               Select/deselect items for bulk action (in some pickers)
+
+================================================================================
+3. LSP NAVIGATION                                                      *jwf-lsp*
+
+LSP (Language Server Protocol) provides IDE-level features by running a
+language-specific server (pyright for Python, ts_ls for TypeScript) that
+understands your code. All the commands below only work when a server has
+attached to the file you are editing (check :LspInfo).
+
+After any "go to" command, use Ctrl-o to jump back to where you were.
+Use Ctrl-i to jump forward again. This works across files.
+
+  ;gd    Go to definition
+           Jumps to where a function, class, or variable is defined.
+           If there are multiple definitions, a list opens.
+
+  ;gD    Go to declaration
+           For most languages this is the same as definition. In C/C++ it
+           jumps to the .h header declaration rather than the .c definition.
+
+  ;gi    Go to implementation
+           In TypeScript, jumps from an interface method to its concrete
+           implementation. In Python, jumps to the actual method body.
+
+  ;gt    Go to type definition
+           Jumps to the type (interface, class, TypedDict) of a variable.
+           E.g. put cursor on a variable "user" and this takes you to the
+           User type/interface that defines its shape.
+
+  ;gr    Show all references
+           Opens a Telescope picker listing every place this symbol is used
+           in the project. Press Enter to jump to a reference.
+
+  ;h     Hover docs
+           Shows the type signature, docstring, and parameter info for the
+           symbol under the cursor in a floating window. Press ;h again or
+           q to close the float.
+
+  ;rn    Rename symbol
+           Renames the symbol under the cursor everywhere in the project
+           (all references update together). Safe rename — not just a grep.
+
+  ;ca    Code actions
+           Opens a menu of quick-fixes and suggestions from the LSP:
+           - Import a missing module
+           - Fix a lint error automatically
+           - Extract selected code to a function
+           - Add missing type annotation
+           The available actions depend on what the language server offers.
+
+================================================================================
+4. DIAGNOSTICS                                                 *jwf-diagnostics*
+
+Diagnostics are errors, warnings, and hints reported by the LSP and ESLint.
+They show as virtual text at the end of the line and markers in the sign column.
+
+  ]d     Jump to the next diagnostic in the current file
+  [d     Jump to the previous diagnostic in the current file
+
+  ;fd    Open all project-wide diagnostics in a Telescope picker
+           Lets you see every error and warning across all files at once.
+           Press Enter to jump to the file and line.
+
+To see the full message for a diagnostic under the cursor:
+  :lua vim.diagnostic.open_float()    (or just hover over it — it auto-shows)
+
+================================================================================
+5. GIT — CHANGED FILES & HISTORY                                      *jwf-git*
+
+These commands help you understand what has changed and when.
+
+SEEING WHAT FILES HAVE CHANGED:
+  ;gs    Git status — Telescope picker of all changed/staged/untracked files
+           Shows the same information as "git status" but lets you open any
+           file directly. The letter on the left (M/A/D/?) is the git status.
+
+  ;G     Open the fugitive status window (:Git)
+           A full interactive git status panel. From here you can:
+           - Press s on a file to stage it
+           - Press u on a file to unstage it
+           - Press = to toggle an inline diff for a file
+           - Press cc to open a commit message buffer and commit
+           - Press P to push
+           - Press p to pull
+
+SEEING HISTORY:
+  ;gc    Git repo history — all commits, newest first (Telescope)
+           Press Enter on a commit to see its full diff.
+
+  ;gF    Git file history — commits that touched the current file only
+           Great for answering "when was this function last changed and why?"
+           Press Enter on a commit to see what that commit changed in the file.
+
+  ;gl    Git log (one line per commit) via fugitive in the command window
+           Quick overview without leaving the editor.
+
+  ;gB    Git branches — switch branches via Telescope
+           Press Enter to check out the selected branch.
+
+GITHUB PERMALINK:
+  ;gy    (normal mode)  Copy a permalink for the current line to clipboard
+  ;gy    (visual mode)  Copy a permalink for the selected line range
+           The URL is pinned to the current commit SHA, not the branch name,
+           so it will always point to the exact same line of code even after
+           the branch moves. Paste into Slack, GitHub comments, Jira tickets.
+
+================================================================================
+6. GIT — HUNK ACTIONS                                               *jwf-hunks*
+
+A "hunk" is a contiguous block of lines that differ from the last commit.
+The sign column (the narrow strip on the left) shows + for added lines,
+~ for changed lines, and - where lines were deleted. These are set by gitsigns.
+
+NAVIGATING HUNKS:
+  ]h    Jump to the next changed hunk in the file
+  [h    Jump to the previous changed hunk
+
+REVIEWING CHANGES:
+  ;gp    Preview hunk — shows a floating before/after diff for the current hunk
+           Close it with q or Esc.
+
+  ;gv    View full file diff split against HEAD
+           Opens a vertical split: left side is the committed version,
+           right side is your working copy.
+
+  ;gb    Toggle inline blame
+           Shows "abc1234  Jane Doe  3 days ago: fix button padding" at the
+           end of the current line. Toggle it off when you are done.
+
+STAGING & DISCARDING:
+  ;ga    Stage hunk — adds just this block to the git index
+           Lets you make a focused commit without staging unrelated changes
+           in the same file.
+
+  ;gu    Unstage hunk — removes it from the index (keeps your edits)
+
+  ;gx    Reset hunk — discards local changes in this block, reverts to HEAD
+           WARNING: this is destructive. The changes are gone.
+
+================================================================================
+7. TERMINAL / SHELL                                               *jwf-terminal*
+
+toggleterm gives you persistent floating terminals that keep their shell
+session alive across toggles. Each numbered instance is a separate shell.
+
+  ;sh    Open/close floating shell (instance 1)
+           The shell session persists — if you start a dev server here,
+           it keeps running while you edit code and is still there when
+           you toggle the terminal back open.
+
+  ;sv    Open/close horizontal split shell (instance 1)
+           Splits the window horizontally with a terminal at the bottom.
+           Useful for running a watcher (npm run dev, pytest --watch) while
+           keeping the code visible above.
+
+  ;s2    Open/close floating shell (instance 2)
+           A completely separate shell session from instance 1. Use this
+           to run a second process alongside the first — e.g. dev server
+           in ;sh and test runner in ;s2.
+
+  Ctrl-\    Toggle the terminal open/closed from anywhere (normal or insert)
+             This is the global toggle set in terminal.lua.
+
+Inside a terminal buffer:
+  Esc       Return to normal mode (does NOT close the terminal or kill
+             the process — the shell keeps running)
+  i         Enter insert/typing mode again
+  Ctrl-\    Toggle the terminal closed
+  :q        Actually close and kill the terminal session
+
+================================================================================
+8. WINDOW NAVIGATION                                               *jwf-windows*
+
+Neovim splits the screen into "windows" (panes). Each window shows a buffer.
+
+  Ctrl-w h    Move focus to the window on the LEFT
+  Ctrl-w l    Move focus to the window on the RIGHT
+  Ctrl-w j    Move focus to the window BELOW
+  Ctrl-w k    Move focus to the window ABOVE
+  Ctrl-w w    Cycle through all open windows
+
+Resizing windows:
+  Ctrl-w +    Increase height
+  Ctrl-w -    Decrease height
+  Ctrl-w >    Increase width
+  Ctrl-w <    Decrease width
+  Ctrl-w =    Equalise all window sizes
+
+Opening splits:
+  :sp         Horizontal split (same file)
+  :vsp        Vertical split (same file)
+  :sp <file>  Horizontal split opening a different file
+
+================================================================================
+9. DEBUGGING (DAP) — Django / debugpy                                *jwf-debug*
+
+Neovim uses the Debug Adapter Protocol (DAP) — the same protocol VS Code uses.
+nvim-dap acts as the DAP client; debugpy (running inside the Docker container)
+acts as the DAP server. They talk over TCP on port 5678.
+
+STEP 1 — Start the debug container
+  Open a floating shell with  ;sh  and run:
+    cd ~/projects/web && ./bin/debugpy.sh
+
+  What debugpy.sh does:
+    - Syncs Python packages from the container to ~/projects/web/venv/
+    - Updates .env with PYTHONPATH so pyright finds installed libraries
+    - Stops the normal web container temporarily
+    - Starts an ephemeral container with ENABLE_DEBUGPY=true, publishing:
+        localhost:5678  →  debugpy listener (DAP port)
+        localhost:8000  →  Django web server
+    - On exit (Ctrl-C), restores the normal container automatically
+
+  Wait until you see:  "Starting development server at http://0.0.0.0:8000/"
+  At that point debugpy is listening and waiting for Neovim to attach.
+
+STEP 2 — Set breakpoints
+  Open any Django Python file and press  ;db  on the line you want to pause on.
+  A red dot ● appears in the sign column. You can set as many as you like.
+
+STEP 3 — Attach
+  Press  ;dc  (Continue / attach).
+  The DAP UI opens automatically showing:
+    - Left panel: Variables, Watches, Call Stack, Breakpoints list
+    - Bottom panel: REPL + Django console output
+  Django is now running normally and waiting for requests.
+
+STEP 4 — Trigger the code
+  Make a web request that exercises the code path with your breakpoint.
+  Django will pause when it hits the breakpoint and the DAP UI highlights
+  the current line with a green arrow ▶.
+
+STEP 5 — Inspect and step
+  ;dn    Step over — run this line, stop at the next
+  ;di    Step into — follow a function call inside it
+  ;do    Step out — finish the current function, stop at the caller
+  ;dc    Continue — run until the next breakpoint
+
+  ;dh    Hover — show the value of the variable under the cursor
+  ;dr    REPL — open an interactive Python console in the current frame
+           Type any Python expression to evaluate it in the paused scope,
+           e.g.:  user.email  or  self.request.POST
+
+STEP 6 — Terminate
+  ;dt    Disconnect from debugpy. Django continues running normally.
+         The container keeps running until you Ctrl-C in the terminal.
+
+ALL DEBUG SHORTCUTS:
+  ;dc    Continue / attach to debugpy
+  ;db    Toggle breakpoint on current line
+  ;dB    Conditional breakpoint (prompts for a Python expression)
+  ;dn    Step over
+  ;di    Step into
+  ;do    Step out
+  ;dt    Terminate debug session
+  ;dr    Open interactive REPL
+  ;dh    Hover: show value of expression under cursor
+  ;dl    List all breakpoints
+  ;dC    Clear ALL breakpoints
+  ;du    Toggle DAP UI open/closed manually
+
+PATH MAPPINGS (why breakpoints work):
+  The source code exists in two places:
+    Host (Neovim):     ~/projects/web/src/aplaceforrover/
+    Container (Django): /web/src/aplaceforrover/
+  debug.lua maps these paths so breakpoints set in Neovim match the file
+  paths that debugpy reports. Without this, breakpoints silently never fire.
+
+================================================================================
+10. USEFUL VIM PRIMITIVES                                             *jwf-vim*
+
+These are built-in Vim commands that work everywhere.
+
+JUMP HISTORY:
+  Ctrl-o    Jump back to previous cursor position (works across files)
+  Ctrl-i    Jump forward in jump history
+             After ;gd (go to definition) use Ctrl-o to return.
+
+MARKS:
+  ma        Set mark "a" at current position
+  'a        Jump to mark "a"
+  ''        Jump to the position before your last jump
+
+FOLDS (if enabled):
+  za        Toggle fold open/closed
+  zR        Open all folds
+  zM        Close all folds
+
+SEARCH IN FILE:
+  /foo      Search forward for "foo"
+  ?foo      Search backward
+  n         Next match
+  N         Previous match
+  *         Search for the word under the cursor
+  :noh      Clear search highlights
+
+CLIPBOARD:
+  Because clipboard=unnamedplus is set, ALL yank/delete/paste operations use
+  the system clipboard by default. You do not need "+ prefix for most things.
+
+  y      Yank (copy) — goes straight to system clipboard
+  p      Paste — pastes from system clipboard
+  d      Delete — also goes to clipboard (use "_d to delete without clobbering)
+
+  Cmd-c  (visual mode) Copy selection to system clipboard
+  Cmd-v  (normal mode) Paste from system clipboard
+  Cmd-v  (insert mode) Paste from system clipboard
+  Cmd-v  (visual mode) Replace selection with clipboard contents
+
+  Note: Cmd key forwarding must be enabled in your terminal emulator.
+  In iTerm2: Preferences > Keys, ensure Cmd events are sent to the app.
+
+  "+y    Explicit copy to system clipboard (same as y when unnamedplus is set)
+  "+p    Explicit paste from system clipboard
+  ""p    Paste from the unnamed (default) register
+
+QUICKFIX LIST:
+  :cn    Jump to next item in the quickfix list
+  :cp    Jump to previous item
+  :copen Open the quickfix window
+  :cclose Close it
+  Quickfix is populated by ;gr (references), ;fd (diagnostics), and Ctrl-q
+  inside any Telescope picker.
+
+================================================================================
+vim:ft=help:tw=80:

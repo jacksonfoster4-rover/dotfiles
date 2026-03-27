@@ -14,6 +14,25 @@ return {
         sorting_strategy = "ascending",
         layout_config = { prompt_position = "top" },
         path_display = { "smart" },
+
+        -- These args are passed to ripgrep for every search (;ff and ;fc).
+        -- The defaults already include --color=never etc; we extend them here
+        -- to skip directories that are never worth searching through.
+        vimgrep_arguments = {
+          "rg",
+          "--color=never",
+          "--no-heading",
+          "--with-filename",
+          "--line-number",
+          "--column",
+          "--smart-case",
+          "--glob=!node_modules/**",   -- JS/TS dependencies
+          "--glob=!.git/**",           -- git internals
+          "--glob=!**/*.min.js",       -- minified bundles
+          "--glob=!static/dist/**",    -- compiled frontend assets
+          "--glob=!venv/**",           -- Python virtualenv
+          "--glob=!**/__pycache__/**", -- Python bytecode
+        },
       },
       extensions = {
         fzf = {
