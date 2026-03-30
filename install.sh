@@ -38,8 +38,4 @@ if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
 
-ln -sf $DOTFILES_ROOT/claude/prompts ~/.claude/prompts
-ln -sf $DOTFILES_ROOT/claude/CLAUDE.local.md /workspaces/web/CLAUDE.local.md
-ln -sf "$DOTFILES_PATH/claude/settings.json" ~/.claude/settings.json
-
 echo "Dotfiles setup complete!"
