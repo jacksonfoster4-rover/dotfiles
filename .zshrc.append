@@ -1,1 +1,2 @@
 export JACKSON_TESTING="foobar"
+alias sync-docker-config="$HOME/projects/dotfiles/sync-docker-config.sh"
