@@ -19,14 +19,17 @@ return {
     -- rebuilt when treesitter's ABI version changes.
     build = ":TSUpdate",
 
-    -- lazy = false forces treesitter to load at startup rather than on-demand.
-    -- The `main` field approach also fails for the same reason: lazy.nvim tries
-    -- to require nvim-treesitter.configs before the plugin's runtime directory
-    -- is on the path. Loading eagerly at startup avoids that timing issue.
+    -- lazy = false forces treesitter to load at startup rather than on-demand,
+    -- ensuring the plugin's runtime directory is on the path before config runs.
     lazy = false,
 
     config = function()
-      require("nvim-treesitter.configs").setup({
+      require("nvim-treesitter").setup({
+        -- Install parsers synchronously so they are ready before highlighting
+        -- kicks in. Without this, async installs can race with buffer loads
+        -- and cause intermittent highlighting failures on first open.
+        sync_install = true,
+
         ensure_installed = {
           "python",     -- .py
           "typescript", -- .ts

@@ -38,4 +38,7 @@ if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
 
+uv tool install git+https://github.com/roverdotcom/claude-sync.git
+claude-sync pull
+
 echo "Dotfiles setup complete!"
