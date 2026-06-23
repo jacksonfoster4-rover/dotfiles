@@ -5,6 +5,55 @@ Leader key is  ;  (semicolon)
 Open this file: :help jwf
 
 ================================================================================
+QUICK REFERENCE — the stuff you actually use                       *jwf-quick*
+
+Leader is  ;  — so ";f" means press semicolon then f.
+Stuck? Esc gets you out of almost anything. Ctrl-o jumps back where you were.
+
+FILES & SEARCH
+  ;f     Open a file (fuzzy — type any part of the name)
+  ;ff    Search text in all files (grep)
+  ;fc    Search for the word under the cursor
+  ;tt    Toggle the file tree sidebar
+  ;tn    Find current file in the tree
+
+JUMP AROUND CODE (needs LSP)
+  ;gd    Go to definition         (Ctrl-o = jump back)
+  ;gr    Find all references
+  ;h     Show docs / type for symbol under cursor
+  ;rn    Rename symbol everywhere
+  ;ca    Code actions (auto-import, quick fixes)
+
+ERRORS / WARNINGS
+  ]d     Next error      [d     Previous error
+  ;fd    List all errors in the project
+
+GIT
+  ;gs    See changed files          ;G     Full git panel (stage/commit/push)
+  ;ga    Stage this hunk            ;gp    Preview this hunk
+  ;gx    Discard this hunk (!)      ;gb    Toggle blame on the line
+  ;gy    Copy GitHub permalink to the line
+  ]h     Next change     [h     Previous change
+
+TERMINAL
+  ;sh    Toggle floating shell (keeps running in the background)
+  Ctrl-\ Toggle terminal from anywhere
+  EscEsc Leave terminal typing mode (shell keeps running; single Esc
+         passes through to the program, e.g. Claude Code, vim, fzf)
+
+WINDOWS
+  Ctrl-w h/j/k/l   Move between split panes
+  Ctrl-w =         Make all panes equal size
+
+SAVE / QUIT / UNDO (plain vim)
+  :w     Save        :q     Quit        :wq    Save & quit       :q!  Quit, no save
+  u      Undo        Ctrl-r Redo
+  /foo   Search in file    n / N  next / prev match    :noh  clear highlight
+  y / p  Copy / paste (already uses the system clipboard)
+
+Full details for everything below.
+
+================================================================================
 CONTENTS                                                          *jwf-contents*
 
   1. File Tree .......................... |jwf-tree|
@@ -269,8 +318,10 @@ session alive across toggles. Each numbered instance is a separate shell.
              This is the global toggle set in terminal.lua.
 
 Inside a terminal buffer:
-  Esc       Return to normal mode (does NOT close the terminal or kill
-             the process — the shell keeps running)
+  Esc Esc   Return to normal mode (does NOT close the terminal or kill
+             the process — the shell keeps running). A single Esc is passed
+             straight through to the running program, so TUIs that depend on
+             Esc — Claude Code, vim, fzf, less — receive it normally.
   i         Enter insert/typing mode again
   Ctrl-\    Toggle the terminal closed
   :q        Actually close and kill the terminal session

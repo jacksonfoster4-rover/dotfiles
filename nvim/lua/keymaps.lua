@@ -70,9 +70,11 @@ map('n', '<leader>sv', '<cmd>ToggleTerm direction=horizontal<CR>', { noremap = t
 -- Open a second independent terminal instance (id=2). Each id is a separate
 -- shell session, so you can run a dev server in 1 and tests in 2.
 map('n', '<leader>s2', '<cmd>2ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Open shell instance 2" })
--- While inside a terminal buffer, <Esc> returns to normal mode so you can
--- yank output, scroll, or close the window without killing the shell.
-map('t', '<Esc>', '<C-\\><C-n>', { noremap = true, silent = true, desc = "Exit terminal insert mode" })
+-- Inside a terminal buffer, a single <Esc> is passed straight through to the
+-- running program so TUIs that rely on Esc (Claude Code, vim, fzf, less) work.
+-- Use a double <Esc><Esc> to leave terminal mode for Neovim normal mode, where
+-- you can yank output, scroll, or close the window without killing the shell.
+map('t', '<Esc><Esc>', '<C-\\><C-n>', { noremap = true, silent = true, desc = "Exit terminal insert mode" })
 
 -- macOS clipboard (Cmd+C / Cmd+V)
 -- These require your terminal emulator to forward Cmd key events to Neovim.
