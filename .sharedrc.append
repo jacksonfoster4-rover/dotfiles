@@ -12,4 +12,7 @@ alias followlogs="dc logs -f -n 20"
 alias fetchandreset="git fetch && git reset --hard origin/master"
 alias restartcontainers="dc down && dc up -d"
 alias msp="m shell_plus"
+# Pull the latest dotfiles and re-run the installer (updates nvim config +
+# plugins). Runs install.sh from the repo root since it relies on $(pwd).
+alias reload_dotfiles='git -C "$DOTFILES_PATH" pull --ff-only && (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync")'
 alias staging="k9s --context staging-a"
