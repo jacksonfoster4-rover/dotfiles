@@ -14,6 +14,14 @@ return {
     -- which are incomplete for modern TypeScript/TSX.
     "nvim-treesitter/nvim-treesitter",
 
+    -- Pin to the classic "master" branch. lazy.nvim now defaults to the
+    -- "main" branch (a 2024 rewrite) where require("nvim-treesitter").setup()
+    -- IGNORES ensure_installed/highlight/indent and highlighting must be
+    -- started manually per-buffer. On "master" the options below work as
+    -- written. Without this pin, highlighting silently never turns on and
+    -- Neovim falls back to legacy regex syntax (the pythonConditional groups).
+    branch = "master",
+
     -- :TSUpdate compiles the C parser for every installed language after a
     -- plugin update. Parsers are compiled native binaries and must be
     -- rebuilt when treesitter's ABI version changes.
@@ -24,7 +32,10 @@ return {
     lazy = false,
 
     config = function()
-      require("nvim-treesitter").setup({
+      -- On the master branch the highlight/indent/ensure_installed options
+      -- are configured through the nvim-treesitter.configs module, NOT the
+      -- top-level nvim-treesitter module.
+      require("nvim-treesitter.configs").setup({
         -- Install parsers synchronously so they are ready before highlighting
         -- kicks in. Without this, async installs can race with buffer loads
         -- and cause intermittent highlighting failures on first open.

@@ -6,6 +6,16 @@ jwf-git	jwf.txt	/*jwf-git*
 jwf-hunks	jwf.txt	/*jwf-hunks*
 jwf-lsp	jwf.txt	/*jwf-lsp*
 jwf-quick	jwf.txt	/*jwf-quick*
+jwf-recipes	jwf.txt	/*jwf-recipes*
+jwf-recipe-blame	jwf.txt	/*jwf-recipe-blame*
+jwf-recipe-clean	jwf.txt	/*jwf-recipe-clean*
+jwf-recipe-debug	jwf.txt	/*jwf-recipe-debug*
+jwf-recipe-link	jwf.txt	/*jwf-recipe-link*
+jwf-recipe-partial	jwf.txt	/*jwf-recipe-partial*
+jwf-recipe-procs	jwf.txt	/*jwf-recipe-procs*
+jwf-recipe-rename	jwf.txt	/*jwf-recipe-rename*
+jwf-recipe-replace	jwf.txt	/*jwf-recipe-replace*
+jwf-recipe-usages	jwf.txt	/*jwf-recipe-usages*
 jwf-search	jwf.txt	/*jwf-search*
 jwf-terminal	jwf.txt	/*jwf-terminal*
 jwf-tree	jwf.txt	/*jwf-tree*

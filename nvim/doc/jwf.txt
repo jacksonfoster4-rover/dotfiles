@@ -1,5 +1,5 @@
 *jwf*    Jackson's Neovim Reference
-Last updated: 2025
+Last updated: 2026
 
 Leader key is  ;  (semicolon)
 Open this file: :help jwf
@@ -16,6 +16,12 @@ FILES & SEARCH
   ;fc    Search for the word under the cursor
   ;tt    Toggle the file tree sidebar
   ;tn    Find current file in the tree
+
+SWITCHING OPEN FILES (buffers — the files you already have open)
+  ;fb    Pick from open files (most-recent first) — your main file switcher
+  Ctrl-^ Flip to the LAST file you were in (toggles between two — very fast)
+  :bn    Next open file       :bp    Previous open file
+  :bd    Close the current file (buffer) without quitting Neovim
 
 JUMP AROUND CODE (needs LSP)
   ;gd    Go to definition         (Ctrl-o = jump back)
@@ -35,20 +41,65 @@ GIT
   ;gy    Copy GitHub permalink to the line
   ]h     Next change     [h     Previous change
 
-TERMINAL
-  ;sh    Toggle floating shell (keeps running in the background)
-  Ctrl-\ Toggle terminal from anywhere
-  EscEsc Leave terminal typing mode (shell keeps running; single Esc
-         passes through to the program, e.g. Claude Code, vim, fzf)
+TERMINAL — open / close
+  ;sh    Toggle shell 1 (floating)
+  ;sv    Toggle shell 1 as a horizontal split (sits under your code)
+  ;s2    Toggle shell 2     ;s3  shell 3     ;s4  shell 4  (each independent)
+  ;s2v   Shell 2 as a horizontal split    (;s3v, ;s4v for the others)
+  Ctrl-\ Toggle shell 1 from anywhere;  2Ctrl-\ / 3Ctrl-\ open any numbered one
+
+TERMINAL — managing several
+  ;ss    Pick / switch between all open terminals (menu by number & name)
+  ;sq    Toggle ALL terminals open or closed at once
+         Run a dev server in ;sh, tests in ;s2, a REPL in ;s3 — each id is a
+         separate session that keeps running while hidden.
+
+TERMINAL — typing vs navigating
+  (typing)  Just type — terminal opens in insert mode, ready to go
+  EscEsc    Leave typing mode (shell keeps running; single Esc passes
+            through to the program, e.g. Claude Code, vim, fzf, less)
+  i         Start typing again
+  :q        Actually close AND kill the shell session
+
+TERMINAL — moving around (after EscEsc)
+  Ctrl-w h/j/k/l   Move between the terminal and your code panes
+  Shift-G / gg     Jump to bottom / top of the scrollback
+  /foo  then  n    Search the terminal output for "foo"
+  y / p            Copy from the scrollback / paste (system clipboard)
 
 WINDOWS
   Ctrl-w h/j/k/l   Move between split panes
   Ctrl-w =         Make all panes equal size
 
+COMPLETION (the popup menu while you type)
+  Tab / S-Tab   Move down / up the suggestion list
+  Enter         Accept the highlighted suggestion
+  Ctrl-e        Dismiss the menu and keep typing
+  (LSP, words in the buffer, and file paths all feed the menu automatically.)
+
+EDITING — the vim verbs you'll use constantly
+  ciw    Change the whole word under the cursor (delete it, start typing)
+  ci"    Change inside quotes      ci(  inside parens      cit  inside an HTML tag
+  dd     Delete the line (and copy it)     yy   Copy the line     p   paste below
+  o / O  Open a new line below / above and start typing
+  >> / <<  Indent / un-indent the line       ==   auto-indent the line
+  .      REPEAT your last edit — the biggest time-saver in vim
+  v V    Start selecting (v = characters, V = whole lines); then d/y/c on it
+  Ctrl-v Block select (columns) — edit many lines at the same spot at once
+
+MOVING FAST (no arrow keys)
+  w / b    Forward / back one word         0 / $   Start / end of the line
+  gg / G   Top / bottom of the file        {  }    Up / down a paragraph
+  Ctrl-d   Half page down   Ctrl-u  Half page up   zz  Center cursor on screen
+  %        Jump to the matching bracket / paren / tag
+  f x      Jump to the next "x" on the line  ( ; repeats it,  , reverses )
+
 SAVE / QUIT / UNDO (plain vim)
   :w     Save        :q     Quit        :wq    Save & quit       :q!  Quit, no save
+  :wa    Save ALL open files            :qa   Quit everything    ZZ  Save & quit
   u      Undo        Ctrl-r Redo
-  /foo   Search in file    n / N  next / prev match    :noh  clear highlight
+  /foo   Search in file    n / N  next / prev match
+  Esc    Clear search highlight  (or :noh)
   y / p  Copy / paste (already uses the system clipboard)
 
 Full details for everything below.
@@ -66,6 +117,7 @@ CONTENTS                                                          *jwf-contents*
   8. Window Navigation .................. |jwf-windows|
   9. Debugging (DAP) .................... |jwf-debug|
  10. Useful Vim Primitives .............. |jwf-vim|
+ 11. Workflow Recipes ................... |jwf-recipes|
 
 ================================================================================
 1. FILE TREE                                                         *jwf-tree*
@@ -297,25 +349,52 @@ STAGING & DISCARDING:
 7. TERMINAL / SHELL                                               *jwf-terminal*
 
 toggleterm gives you persistent floating terminals that keep their shell
-session alive across toggles. Each numbered instance is a separate shell.
+session alive across toggles. Each terminal has a numeric id; the SAME id
+always reopens the SAME shell session, so you can keep several long-running
+processes going at once and flip between them without losing state.
 
-  ;sh    Open/close floating shell (instance 1)
+OPENING SPECIFIC SHELLS:
+  ;sh    Toggle shell 1 (floating)
            The shell session persists — if you start a dev server here,
            it keeps running while you edit code and is still there when
            you toggle the terminal back open.
 
-  ;sv    Open/close horizontal split shell (instance 1)
-           Splits the window horizontally with a terminal at the bottom.
+  ;sv    Toggle shell 1 as a horizontal split instead of a float
+           Splits the window horizontally with the terminal at the bottom.
            Useful for running a watcher (npm run dev, pytest --watch) while
-           keeping the code visible above.
+           keeping the code visible above. Same id as ;sh, so it flips the
+           one session between float and split rather than making a new one.
 
-  ;s2    Open/close floating shell (instance 2)
-           A completely separate shell session from instance 1. Use this
-           to run a second process alongside the first — e.g. dev server
-           in ;sh and test runner in ;s2.
+  ;s2    Toggle shell 2 (floating)
+  ;s3    Toggle shell 3 (floating)
+  ;s4    Toggle shell 4 (floating)
+           Each is a completely separate shell session. Run a dev server in
+           shell 1, a test watcher in shell 2, a Python/Node REPL in shell 3,
+           and so on — every one keeps running while hidden.
 
-  Ctrl-\    Toggle the terminal open/closed from anywhere (normal or insert)
-             This is the global toggle set in terminal.lua.
+  ;s2v   Toggle shell 2 as a horizontal split (like ;sv is for shell 1)
+  ;s3v   Toggle shell 3 as a horizontal split
+  ;s4v   Toggle shell 4 as a horizontal split
+           Same id as the matching ;s2–;s4 above, so the float and split
+           shortcuts flip the one session between layouts rather than opening
+           a new shell.
+
+OPENING ANY NUMBERED SHELL ON THE FLY:
+  Ctrl-\      Toggle shell 1 from anywhere (normal or insert mode).
+  2 Ctrl-\    Prefix the toggle with a COUNT to open that numbered shell.
+  3 Ctrl-\    e.g. 5<C-\> opens (or hides) shell 5 — no keymap needed for it.
+           This is how you go beyond the named ;s2–;s4 shortcuts: any id you
+           type a count for becomes its own persistent session.
+
+MANAGING ALL OPEN TERMINALS:
+  ;ss    :TermSelect — opens a menu listing every terminal that is currently
+           open, by id and name. Pick one to jump straight to it. Best way to
+           find a shell when you have several and don't remember which id it
+           got.
+
+  ;sq    :ToggleTermToggleAll — show or hide ALL terminals at once. Handy to
+           clear the screen of every floating shell, then bring them all back
+           with the same key. The sessions keep running while hidden.
 
 Inside a terminal buffer:
   Esc Esc   Return to normal mode (does NOT close the terminal or kill
@@ -479,6 +558,133 @@ QUICKFIX LIST:
   :cclose Close it
   Quickfix is populated by ;gr (references), ;fd (diagnostics), and Ctrl-q
   inside any Telescope picker.
+
+================================================================================
+11. WORKFLOW RECIPES                                               *jwf-recipes*
+
+Task-oriented walkthroughs that chain the individual commands above. Each
+recipe lists the keys in order with what happens at each step.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE A — Rename a symbol everywhere it is used                *jwf-recipe-rename*
+
+  1. Put the cursor on the function/variable/class name.
+  2. ;rn          Type the new name, press Enter.
+                  The LSP rewrites every reference across the whole project
+                  in one shot — not a text search, so it won't touch a
+                  same-named symbol that is actually something else.
+  3. :wa          Save all changed buffers. format-on-save runs for each.
+
+  Want to eyeball the usages before renaming? Press ;gr first to list every
+  reference in a Telescope picker, then ;rn when satisfied.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE B — Find every usage of something, then fix each one     *jwf-recipe-usages*
+
+  1. Cursor on the symbol  →  ;gr      Lists all references (Telescope).
+  2. Ctrl-q                            Send the whole list to the quickfix.
+  3. :cn / :cp                         Walk forward/back through each usage,
+                                       editing as you go.
+  4. :copen                            Open the quickfix window to see the
+                                       full list; Enter on a row jumps to it.
+
+  Don't have an LSP symbol (e.g. a string key, a CSS class)? Use ;ff to grep
+  the literal text instead, then Ctrl-q from that picker.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE C — Stage a focused, partial commit                      *jwf-recipe-partial*
+
+  You changed three things in one file but want to commit only one of them.
+
+  1. ]h / [h       Jump between the changed hunks in the file.
+  2. ;gp           Preview the hunk under the cursor to confirm it's the one.
+  3. ;ga           Stage just that hunk (leaves the others unstaged).
+  4. Repeat 1–3 for any other hunks that belong in this commit.
+  5. ;G            Open fugitive. Confirm only the intended hunks are staged.
+  6. cc            Write the commit message, :wq to commit.
+
+  Staged the wrong hunk?  ;gu  unstages it without losing the edit.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE D — Debug a single Django request end to end             *jwf-recipe-debug*
+
+  1. ;sh                               Floating shell.
+       cd ~/projects/web && ./bin/debugpy.sh
+     Wait for "Starting development server".
+  2. Open the view file, ;db on the line to pause at.
+  3. ;dc                               Attach. DAP UI opens.
+  4. Trigger the request (browser / curl). Execution pauses at the line.
+  5. ;dh   over a variable             Show its value inline.
+     ;dr                               REPL — evaluate  self.request.POST  etc.
+     ;dn / ;di / ;do                   Step over / into / out.
+  6. ;dc to run to the next breakpoint, or ;dt to detach when done.
+
+  Full reference: |jwf-debug|.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE E — Project-wide search and replace                      *jwf-recipe-replace*
+
+  1. ;sr                               Open spectre.
+  2. Type the search term (top field) and the replacement (second field).
+                                       Regex supported.
+  3. Review the match list — each shows the file and the before/after.
+     Put the cursor on a match and press dd to exclude it from the replace.
+  4. <leader>R  (that is  ;R )         Execute the replace across all files.
+  5. :wa                               Save everything.
+
+  For a quick single-symbol rename in code, prefer ;rn (Recipe A) — it is
+  type-aware. Use spectre for text that the LSP doesn't track (strings,
+  comments, config values, filenames in content).
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE F — Share a permalink to code in Slack / a PR            *jwf-recipe-link*
+
+  1. Put the cursor on the line  (or select a range in visual mode).
+  2. ;gy                               Copies a github.com permalink to the
+                                       system clipboard, pinned to the current
+                                       commit SHA so it never drifts.
+  3. Cmd-v into Slack / GitHub / Jira.
+
+  The link points at the committed code. If your line only exists in unpushed
+  local work, push first or the URL will 404 for others.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE G — Run a dev server and tests side by side              *jwf-recipe-procs*
+
+  1. ;sh                               Shell 1 (floating). Start the dev server
+                                       here, e.g.  npm run dev.
+  2. Esc Esc                           Back to normal mode (server keeps
+                                       running in the background).
+  3. ;s2                               Shell 2 — a separate session. Run the
+                                       test watcher here, e.g. pytest --watch.
+  4. ;sh / ;s2                         Toggle either shell open or closed; both
+                                       processes keep running the whole time.
+
+  Prefer them on screen at once? ;sv opens a horizontal split terminal under
+  the code instead of a floating overlay.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE H — Find out when and why a line changed                 *jwf-recipe-blame*
+
+  1. ;gb                               Toggle inline blame — shows the commit,
+                                       author, and date at the end of the line.
+  2. ;gF                               File history (Telescope). Enter on a
+                                       commit shows exactly what it changed
+                                       in this file.
+  3. ;gc                               Whole-repo history if you need wider
+                                       context around that commit.
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE I — Clean up errors and lint in a file                   *jwf-recipe-clean*
+
+  1. ]d / [d                           Walk through each diagnostic in the file.
+  2. ;ca   on a flagged line           Code actions — auto-import, apply the
+                                       suggested fix, add a type annotation.
+  3. :w                                Save. On .py/.ts/.tsx/.js this runs
+                                       format-on-save; on JS/TS, ESLint also
+                                       auto-fixes everything it can (EslintFixAll).
+  4. ;fd                               Project-wide diagnostics picker to confirm
+                                       nothing is left across the whole project.
 
 ================================================================================
 vim:ft=help:tw=80:

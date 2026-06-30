@@ -1,6 +1,11 @@
 local map = vim.api.nvim_set_keymap
 local opts = { noremap = true, silent = true }
 
+-- ── Editor ───────────────────────────────────────────────────────────────--
+-- Esc in normal mode clears the search highlight left over from /foo. Esc does
+-- nothing useful in normal mode otherwise, so there's no conflict.
+map('n', '<Esc>', '<cmd>noh<CR>', { noremap = true, silent = true, desc = "Clear search highlight" })
+
 -- ── File tree ──────────────────────────────────────────────────────────────
 map('n', '<leader>tt', ':NvimTreeToggle<CR>',   { noremap = true, silent = true, desc = "Toggle file tree" })
 map('n', '<leader>to', ':NvimTreeOpen<CR>',     { noremap = true, silent = true, desc = "Open file tree" })
@@ -13,6 +18,9 @@ map('n', '<leader>tn', ':NvimTreeFindFile<CR>', { noremap = true, silent = true,
 -- ── Search ─────────────────────────────────────────────────────────────────
 map('n', '<leader>sr', "<cmd>lua require('spectre').open()<CR>",       { noremap = true, silent = true, desc = "Search and replace (project)" })
 map('n', '<leader>f',  '<cmd>Telescope find_files<CR>',                { noremap = true, silent = true, desc = "Find file by name" })
+-- Jump between already-open files (buffers). Faster than ;f when the file is
+-- already loaded — shows your open buffers most-recently-used first.
+map('n', '<leader>fb', '<cmd>Telescope buffers sort_mru=true<CR>',     { noremap = true, silent = true, desc = "Switch between open files (buffers)" })
 map('n', '<leader>ff', '<cmd>lua require("telescope").extensions.live_grep_args.live_grep_args()<CR>', { noremap = true, silent = true, desc = "Search string in files (with args)" })
 map('n', '<leader>fc', '<cmd>Telescope grep_string<CR>',               { noremap = true, silent = true, desc = "Search word under cursor" })
 map('n', '<leader>fs', '<cmd>Telescope current_buffer_fuzzy_find<CR>', { noremap = true, silent = true, desc = "Fuzzy search in current file" })
@@ -63,13 +71,29 @@ map('n', '<leader>gl', '<cmd>Git log --oneline<CR>', { noremap = true, silent = 
 
 -- ── Terminal ───────────────────────────────────────────────────────────────
 -- <C-\> (mapped in terminal.lua config) toggles the floating terminal globally.
--- These give named shortcuts for specific use-cases:
-map('n', '<leader>sh', '<cmd>ToggleTerm direction=float<CR>',      { noremap = true, silent = true, desc = "Open floating shell" })
+-- Each terminal has a numeric id; the same id always reopens the same shell
+-- session, so you can keep several long-running processes side by side.
+-- These give named shortcuts for the common ids:
+map('n', '<leader>sh', '<cmd>1ToggleTerm direction=float<CR>',      { noremap = true, silent = true, desc = "Toggle shell 1 (float)" })
 -- Horizontal split terminal at the bottom — useful alongside a code buffer.
-map('n', '<leader>sv', '<cmd>ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Open split shell (horizontal)" })
--- Open a second independent terminal instance (id=2). Each id is a separate
--- shell session, so you can run a dev server in 1 and tests in 2.
-map('n', '<leader>s2', '<cmd>2ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Open shell instance 2" })
+-- Reuses id 1 so ;sh and ;sv flip the same session between float and split.
+map('n', '<leader>sv', '<cmd>1ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 1 (horizontal)" })
+-- Independent terminal instances. Each id is a separate shell session, so you
+-- can run a dev server in 1, tests in 2, a REPL in 3, etc.
+map('n', '<leader>s2', '<cmd>2ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Toggle shell 2 (float)" })
+map('n', '<leader>s3', '<cmd>3ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Toggle shell 3 (float)" })
+map('n', '<leader>s4', '<cmd>4ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Toggle shell 4 (float)" })
+-- Horizontal split variants of shells 2–4 (like ;sv is for shell 1). Same id
+-- as the float shortcut above, so ;s2 and ;s2v flip the one session between
+-- float and split rather than making a new one.
+map('n', '<leader>s2v', '<cmd>2ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 2 (horizontal)" })
+map('n', '<leader>s3v', '<cmd>3ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 3 (horizontal)" })
+map('n', '<leader>s4v', '<cmd>4ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 4 (horizontal)" })
+-- Manage them all: :TermSelect lists every open terminal in a menu so you can
+-- jump straight to one by number/name without remembering which id is which.
+map('n', '<leader>ss', '<cmd>TermSelect<CR>',                      { noremap = true, silent = true, desc = "Select / switch terminal" })
+-- Close every open terminal at once (kills all the shell sessions).
+map('n', '<leader>sq', '<cmd>ToggleTermToggleAll<CR>',             { noremap = true, silent = true, desc = "Toggle all terminals open/closed" })
 -- Inside a terminal buffer, a single <Esc> is passed straight through to the
 -- running program so TUIs that rely on Esc (Claude Code, vim, fzf, less) work.
 -- Use a double <Esc><Esc> to leave terminal mode for Neovim normal mode, where
