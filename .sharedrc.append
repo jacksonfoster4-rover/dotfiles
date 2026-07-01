@@ -20,9 +20,18 @@ alias staging="k9s --context staging-a"
 # Because tmux runs on the box, the session survives SSH disconnects — reconnect
 # and re-run to land back in the same Claude session.
 # Session name is "tmux-claude-<N>" (N defaults to 0), so you can run several in
-# parallel: `claude_worktree` -> tmux-claude-0, `claude_worktree 2` -> tmux-claude-2.
-# -A: attach if the session already exists, otherwise create it.
+# parallel. The session is created (detached, in the background) if it doesn't
+# already exist; nothing steals your terminal unless you ask to attach.
+#   claude_worktree -d 2   create tmux-claude-2 in the background, don't attach
+#   claude_worktree -a 2   create if needed, then attach to tmux-claude-2
+# -a is the default when no flag is given.
 claude_worktree() {
+  local mode=-a
+  case "$1" in
+    -a|-d) mode="$1"; shift ;;
+  esac
   local name="tmux-claude-${1:-0}"
-  tmux new-session -A -s "$name" "claude --worktree"
+  tmux has-session -t "$name" 2>/dev/null ||
+    tmux new-session -d -s "$name" "claude --worktree -n $name"
+  [[ "$mode" == "-a" ]] && tmux attach-session -t "$name"
 }
