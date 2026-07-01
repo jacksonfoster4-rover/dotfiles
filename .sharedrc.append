@@ -16,3 +16,13 @@ alias msp="m shell_plus"
 # plugins). Runs install.sh from the repo root since it relies on $(pwd).
 alias reload_dotfiles='git -C "$DOTFILES_PATH" pull --ff-only && (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync")'
 alias staging="k9s --context staging-a"
+# Start (or reattach to) a persistent tmux session running `claude --worktree`.
+# Because tmux runs on the box, the session survives SSH disconnects — reconnect
+# and re-run to land back in the same Claude session.
+# Session name is "tmux-claude-<N>" (N defaults to 0), so you can run several in
+# parallel: `claude_worktree` -> tmux-claude-0, `claude_worktree 2` -> tmux-claude-2.
+# -A: attach if the session already exists, otherwise create it.
+claude_worktree() {
+  local name="tmux-claude-${1:-0}"
+  tmux new-session -A -s "$name" "claude --worktree"
+}
