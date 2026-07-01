@@ -29,11 +29,11 @@ ln -sf $(pwd)/.gitconfig ~/.gitconfig
 DOTFILES_ROOT=/workspaces/.codespaces/.persistedshare/dotfiles
 
 # shared bashrc and zshrc config
-if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" ~/.bashrc; then
+if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.bashrc.append; then
     echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.bashrc.append
 fi
 
-if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" ~/.zshrc; then
+if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.zshrc.append; then
     echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.zshrc.append
 fi
 
