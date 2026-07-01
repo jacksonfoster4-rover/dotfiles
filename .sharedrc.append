@@ -19,18 +19,22 @@ alias staging="k9s --context staging-a"
 # Start (or reattach to) a persistent tmux session running `claude --worktree`.
 # Because tmux runs on the box, the session survives SSH disconnects — reconnect
 # and re-run to land back in the same Claude session.
-# Session name is "tmux-claude-<ID>" (ID defaults to 0, but can be any text), so
-# you can run several in parallel. The session is created (detached, in the
-# background) if it doesn't already exist; nothing steals your terminal unless
-# you ask to attach. The ID is also passed to `claude --worktree <name>` so the
-# git worktree lands at a predictable path (.claude/worktrees/<name>) and can be
-# pruned on delete.
-#   claude_worktree -d 2         create tmux-claude-2 in the background, don't attach
-#   claude_worktree -a 2         create if needed, then attach to tmux-claude-2
-#   claude_worktree --delete 2   kill tmux-claude-2 and prune its worktree (ID required)
+# Session name is "<prefix>-<ID>" (ID defaults to 0, but can be any text), so you
+# can run several in parallel. The prefix is "tmux-claude", or — inside a
+# Codespace ($CODESPACE_NAME set) — the codespace name with its trailing random
+# segment (everything after the last "-") stripped, so sessions are grouped per
+# codespace. The session is created (detached, in the background) if it doesn't
+# already exist; nothing steals your terminal unless you ask to attach. The name
+# is also passed to `claude --worktree <name>` so the git worktree lands at a
+# predictable path (.claude/worktrees/<name>) and can be pruned on delete.
+#   claude_worktree -d 2         create <prefix>-2 in the background, don't attach
+#   claude_worktree -a 2         create if needed, then attach to <prefix>-2
+#   claude_worktree --delete 2   kill <prefix>-2 and prune its worktree (ID required)
 #   claude_worktree --delete --force 2   also discard the worktree's uncommitted changes
 # -a is the default when no flag is given.
 claude_worktree() {
+  local prefix="tmux-claude"
+  [[ -n "$CODESPACE_NAME" ]] && prefix="${CODESPACE_NAME%-*}"
   local mode=-a
   case "$1" in
     -a|-d|--delete) mode="$1"; shift ;;
@@ -47,14 +51,14 @@ claude_worktree() {
       echo "claude_worktree --delete requires a session ID" >&2
       return 1
     fi
-    local name="tmux-claude-$id"
+    local name="$prefix-$id"
     tmux kill-session -t "$name" 2>/dev/null
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
     [[ -n "$root" ]] && git worktree remove $force "$root/.claude/worktrees/$name"
     return
   fi
-  local name="tmux-claude-${1:-0}"
+  local name="$prefix-${1:-0}"
   tmux has-session -t "$name" 2>/dev/null ||
     tmux new-session -d -s "$name" "claude --worktree $name -n $name"
   [[ "$mode" == "-a" ]] && tmux attach-session -t "$name"
