@@ -36,6 +36,23 @@ vim.g.maplocalleader = ";"
 -- which are built-in, so no extra setup is needed.
 vim.opt.clipboard = "unnamedplus"
 
+-- Over SSH (e.g. editing inside a Codespace) there is no macOS clipboard and no
+-- pbcopy/pbpaste, so unnamedplus yanks would go nowhere. Route the + and *
+-- registers through OSC 52 instead: an escape sequence the terminal forwards to
+-- your real system clipboard across the SSH link. Gated on $SSH_TTY so local
+-- Neovim keeps using the native pbcopy/pbpaste provider untouched.
+-- Requires a terminal with OSC 52 enabled (iTerm2: "Applications in terminal
+-- may access clipboard"; kitty/wezterm/ghostty: on by default). If routed
+-- through tmux, also set `set -g set-clipboard on`.
+if vim.env.SSH_TTY then
+  local osc52 = require("vim.ui.clipboard.osc52")
+  vim.g.clipboard = {
+    name = "OSC 52",
+    copy  = { ["+"] = osc52.copy("+"),  ["*"] = osc52.copy("*") },
+    paste = { ["+"] = osc52.paste("+"), ["*"] = osc52.paste("*") },
+  }
+end
+
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
