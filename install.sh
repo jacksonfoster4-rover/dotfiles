@@ -13,6 +13,15 @@ nvim --headless "$@" +qa
 # config help text
 nvim --headless +"helptags ALL" +qa
 
+# Ghostty terminfo — when SSH'd into this codespace from Ghostty, TERM is
+# xterm-ghostty, which the box doesn't know ("unknown terminal type"), breaking
+# clear/less/vim. Compile the bundled terminfo source into ~/.terminfo so those
+# work. (gh codespace ssh isn't wrapped by Ghostty's ssh-terminfo integration,
+# so we install it here instead.)
+if command -v tic >/dev/null 2>&1 && [ -f "$(pwd)/ghostty.terminfo" ]; then
+    tic -x "$(pwd)/ghostty.terminfo" 2>/dev/null || true
+fi
+
 
 # Git config (safe to overwrite)
 ln -sf $(pwd)/.gitconfig ~/.gitconfig
