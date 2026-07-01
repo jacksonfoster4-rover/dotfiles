@@ -29,6 +29,17 @@ SWITCHING OPEN FILES (buffers — the files you already have open)
   :bn    Next open file       :bp    Previous open file
   :bd    Close the current file (buffer) without quitting Neovim
 
+AI / CLAUDE CODE
+  ;ac    Toggle the Claude Code terminal (native split)
+  ;af    Focus it       ;ar  Resume a session    ;aC  Continue last session
+  ;as    (visual) Send the selected code to Claude as context
+  ;ab    Add the current file to Claude's context
+  ;aa    Accept Claude's proposed diff    ;ax  Reject it
+  ;ay    (visual) Yank selection + "path:line" header, to paste into any chat
+  ;ae    Yank all of this file's errors/warnings, to paste into any chat
+  ;gV    Review ALL working changes (what Claude just edited) in a diff view
+  Files Claude edits on disk auto-reload in your open buffers.  (full: |jwf-ai|)
+
 JUMP AROUND CODE (needs LSP)
   ;gd    Go to definition         (Ctrl-o = jump back)
   ;gr    Find all references
@@ -145,6 +156,7 @@ CONTENTS                                                          *jwf-contents*
  10. Useful Vim Primitives .............. |jwf-vim|
  11. Workflow Recipes ................... |jwf-recipes|
  12. tmux Cookbook ...................... |jwf-tmux|
+ 13. AI / Claude Code Workflow .......... |jwf-ai|
 
 ================================================================================
 1. FILE TREE                                                         *jwf-tree*
@@ -911,6 +923,66 @@ RECIPE — long-running job you can walk away from             *jwf-tmux-recipe-
 
   Closing your terminal / losing ssh at any point does NOT stop the job — that
   is the whole point of running it under tmux.
+
+================================================================================
+13. AI / CLAUDE CODE WORKFLOW                                           *jwf-ai*
+
+Two things make Neovim a real pair-editor with Claude Code:
+  - claudecode.nvim — runs a WebSocket server inside Neovim that the `claude`
+    process auto-connects to (same machine, so it works over SSH / in a
+    Codespace with no port forwarding). Claude can then read your selection,
+    the files you add, and hand edits back as diffs you accept in Neovim.
+  - autoread — when Claude writes files on disk, your open buffers refresh
+    automatically instead of going stale (see below).
+
+All commands sit under the ;a ("AI") prefix.
+
+STARTING / FOCUSING CLAUDE                                          *jwf-ai-start*
+  ;ac    Toggle the Claude Code terminal in a split on the right. The claude
+         it launches auto-connects to Neovim, so selections and @-mentions
+         from here land in that session.
+  ;af    Focus the Claude terminal (jump the cursor into it).
+  ;ar    Start Claude with --resume (pick a past session to reopen).
+  ;aC    Start Claude with --continue (reopen the most recent session).
+
+  Note: use ;ac to launch claude so the editor integration connects. A claude
+  you start by hand in a ;sh toggleterm shell will run fine but won't be linked
+  to Neovim (no selection/diff sharing).
+
+SENDING CONTEXT TO CLAUDE                                             *jwf-ai-send*
+  ;as    (visual mode) Send the highlighted lines to Claude as context —
+         the fastest way to say "look at THIS".
+  ;ab    Add the current file to Claude's context (whole buffer).
+  ;as    (in the file tree) Add the file/folder under the cursor to context.
+
+REVIEWING CLAUDE'S EDITS                                             *jwf-ai-diff*
+  When Claude proposes a change it opens as a diff IN Neovim:
+  ;aa    Accept the diff (apply the change).
+  ;ax    Reject the diff (discard it).
+
+  ;gV    Open diffview: a full-window review of EVERY file changed in your
+         working tree — ideal after Claude edits several files at once.
+  ;gQ    Close diffview.
+  ;gh    Diffview history of just the current file.
+
+PASTE-INTO-ANY-CHAT HELPERS                                          *jwf-ai-yank*
+  These don't need the integration — they just fill your clipboard so you can
+  paste into a web chat, a PR comment, Slack, etc. Both also work over SSH
+  (they write the + register, which goes to your Mac clipboard via OSC 52).
+
+  ;ay    (visual mode) Yank the selection WITH a "path:startline-endline"
+         header prepended, so the snippet says where it came from.
+  ;ae    Yank every diagnostic (error/warning) in the current file, each as
+         "Lnn [SEVERITY] message" — paste the whole list instead of a
+         screenshot when asking the model to fix errors.
+
+AUTO-RELOAD OF EXTERNALLY EDITED FILES                             *jwf-ai-reload*
+  Claude Code (and git checkouts, formatters, rebases) change files on disk
+  outside Neovim. With autoread on plus a checktime autocmd, buffers you have
+  open re-read themselves when you refocus the window, switch to the buffer,
+  or leave a terminal — so you never edit a stale copy or overwrite Claude's
+  work on the next save. Nothing to press; it just happens.
+  If you ever want to force it manually:  :checktime
 
 ================================================================================
 vim:ft=help:tw=80:

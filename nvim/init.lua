@@ -76,6 +76,18 @@ else
   vim.opt.clipboard = "unnamedplus"
 end
 
+-- Auto-reload buffers when files change on disk. Claude Code (and git
+-- checkouts, formatters, etc.) edit files behind Neovim's back; without this
+-- your open buffer stays stale and saving would clobber those external edits.
+-- autoread lets Neovim re-read a file it notices has changed; the autocmd
+-- forces that check on the events where you'd notice — refocusing the window,
+-- entering a buffer, or leaving a terminal (e.g. after the claude TUI writes).
+vim.opt.autoread = true
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "TermLeave", "TermClose" }, {
+  group = vim.api.nvim_create_augroup("auto_reload_files", { clear = true }),
+  command = "checktime",
+})
+
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 

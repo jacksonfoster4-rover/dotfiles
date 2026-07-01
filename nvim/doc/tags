@@ -1,4 +1,10 @@
 jwf	jwf.txt	/*jwf*
+jwf-ai	jwf.txt	/*jwf-ai*
+jwf-ai-diff	jwf.txt	/*jwf-ai-diff*
+jwf-ai-reload	jwf.txt	/*jwf-ai-reload*
+jwf-ai-send	jwf.txt	/*jwf-ai-send*
+jwf-ai-start	jwf.txt	/*jwf-ai-start*
+jwf-ai-yank	jwf.txt	/*jwf-ai-yank*
 jwf-contents	jwf.txt	/*jwf-contents*
 jwf-debug	jwf.txt	/*jwf-debug*
 jwf-diagnostics	jwf.txt	/*jwf-diagnostics*

@@ -41,6 +41,45 @@ for i = 1, 9 do
       { noremap = true, silent = true, desc = "Go to buffer tab " .. i })
 end
 
+-- ── AI helpers (pair with claudecode.nvim / any chat) ───────────────────────
+-- ;a* command keymaps (toggle/send/accept-diff) live in the claudecode plugin
+-- spec. These two are plain register helpers, so they work even when pasting
+-- into a chat by hand. Both write the + register (→ Mac clipboard, OSC 52 over
+-- SSH) and the unnamed register (so a normal p pastes it too).
+
+-- ;ay — yank the visual selection WITH a "path:startline-endline" header, so
+-- the snippet you paste tells the model exactly where it came from.
+vim.keymap.set('x', '<leader>ay', function()
+  local s, e = vim.fn.line('v'), vim.fn.line('.')
+  if s > e then s, e = e, s end
+  local body = table.concat(vim.fn.getline(s, e), '\n')
+  local text = string.format('%s:%d-%d\n%s', vim.fn.expand('%:.'), s, e, body)
+  vim.fn.setreg('+', text)
+  vim.fn.setreg('"', text)
+  vim.api.nvim_input('<Esc>')
+end, { desc = "Yank selection + location for AI chat" })
+
+-- ;ae — yank ALL diagnostics in the current file (line + severity + message),
+-- ready to paste so the model can see the errors without a screenshot.
+vim.keymap.set('n', '<leader>ae', function()
+  local diags = vim.diagnostic.get(0)
+  if vim.tbl_isempty(diags) then
+    vim.notify('No diagnostics in this file')
+    return
+  end
+  table.sort(diags, function(a, b) return a.lnum < b.lnum end)
+  local names = { 'ERROR', 'WARN', 'INFO', 'HINT' }
+  local out = { vim.fn.expand('%:.') }
+  for _, d in ipairs(diags) do
+    out[#out + 1] = string.format('  L%d [%s] %s', d.lnum + 1,
+      names[d.severity] or '?', (d.message or ''):gsub('\n', ' '))
+  end
+  local text = table.concat(out, '\n')
+  vim.fn.setreg('+', text)
+  vim.fn.setreg('"', text)
+  vim.notify(string.format('Yanked %d diagnostics', #diags))
+end, { desc = "Yank file diagnostics for AI chat" })
+
 -- ── LSP navigation ─────────────────────────────────────────────────────────
 -- Ctrl-o jumps back after any of these; Ctrl-i jumps forward again.
 map('n', '<leader>gd', '<cmd>lua vim.lsp.buf.definition()<CR>',      { noremap = true, silent = true, desc = "Go to definition" })
