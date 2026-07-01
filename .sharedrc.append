@@ -14,7 +14,16 @@ alias restartcontainers="dc down && dc up -d"
 alias msp="m shell_plus"
 # Pull the latest dotfiles and re-run the installer (updates nvim config +
 # plugins). Runs install.sh from the repo root since it relies on $(pwd).
-alias reload_dotfiles='git -C "$DOTFILES_PATH" pull --ff-only && (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync")'
+reload_dotfiles() {
+  git -C "$DOTFILES_PATH" pull --ff-only &&
+    (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync") || return
+  # Reload the current shell's rc so new aliases/functions are picked up now.
+  if [ -n "$ZSH_VERSION" ]; then
+    source ~/.zshrc
+  elif [ -n "$BASH_VERSION" ]; then
+    source ~/.bashrc
+  fi
+}
 alias staging="k9s --context staging-a"
 # Start (or reattach to) a persistent tmux session running `claude --worktree`.
 # Because tmux runs on the box, the session survives SSH disconnects — reconnect
