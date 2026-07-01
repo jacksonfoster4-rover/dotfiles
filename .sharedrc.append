@@ -59,3 +59,4 @@ claude_worktree() {
     tmux new-session -d -s "$name" "claude --worktree $name -n $name"
   [[ "$mode" == "-a" ]] && tmux attach-session -t "$name"
 }
+alias cwt="claude_worktree"
