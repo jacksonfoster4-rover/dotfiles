@@ -13,25 +13,6 @@ return {
     },
 
     config = function()
-      -- ── Let treesitter own syntax highlighting ──────────────────────────
-      -- LSP "semantic tokens" are drawn on top of treesitter's captures, and
-      -- pyright/ts_ls emit them with modifiers (@lsp.typemod.parameter.*) that
-      -- outrank the plain @lsp.type.* groups our colorscheme sets — so Python
-      -- in particular gets repainted back to a muddy, low-contrast look.
-      --
-      -- Turning the server's semanticTokensProvider off makes treesitter the
-      -- single source of highlighting. Our onedark `highlights` table targets
-      -- treesitter captures (@variable.parameter, @string, @keyword.import,
-      -- ...), so colors become predictable and high-contrast across languages.
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(args)
-          local client = vim.lsp.get_client_by_id(args.data.client_id)
-          if client then
-            client.server_capabilities.semanticTokensProvider = nil
-          end
-        end,
-      })
-
       -- Apply capabilities to ALL servers at once using the '*' wildcard.
       -- default_capabilities() adds the extra fields nvim-cmp needs for
       -- completion (snippetSupport, resolveSupport, etc.).

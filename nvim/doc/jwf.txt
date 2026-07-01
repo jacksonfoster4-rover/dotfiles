@@ -14,8 +14,14 @@ FILES & SEARCH
   ;f     Open a file (fuzzy — type any part of the name)
   ;ff    Search text in all files (grep)
   ;fc    Search for the word under the cursor
-  ;tt    Toggle the file tree sidebar
-  ;tn    Find current file in the tree
+
+FILE TREE (sidebar)
+  ;tt    Toggle the tree open/closed      ;to  Open (cursor stays in code)
+  ;tf    Jump your cursor INTO the tree    ;tc  Close the tree
+  ;tn    Reveal the current file in the tree
+  Ctrl-w l   Jump from the tree back to your code (Ctrl-w h returns to tree)
+  Inside tree: Enter open · j/k move · f type-to-filter · P parent · q close
+               (full list + fast nav: |jwf-tree|)
 
 SWITCHING OPEN FILES (buffers — the files you already have open)
   ;fb    Pick from open files (most-recent first) — your main file switcher
@@ -67,9 +73,29 @@ TERMINAL — moving around (after EscEsc)
   /foo  then  n    Search the terminal output for "foo"
   y / p            Copy from the scrollback / paste (system clipboard)
 
+TMUX — shell sessions that survive closing the terminal  (prefix is Ctrl-b)
+  tmux new -s work        Start + attach to a session named "work"
+  tmux new -d -s work     Start it DETACHED (runs in background)
+  tmux ls                 List sessions      tmux attach -t work   Attach
+  Ctrl-b d                Detach (leaves everything running)
+  tmux kill-session -t work   Delete one     tmux kill-server   Delete all
+  Ctrl-b c / , / n p      New window / rename / next-prev     Ctrl-b % "   Split
+  Tail WITHOUT attaching:  tmux capture-pane -t work -p | tail -30
+                           (live: tmux pipe-pane -t work -o 'cat >>/tmp/w.log')
+  Full cookbook: |jwf-tmux|
+
 WINDOWS
   Ctrl-w h/j/k/l   Move between split panes
   Ctrl-w =         Make all panes equal size
+
+TABS (the bar at the top — one tab per open file, VS Code style: bufferline)
+  Shift-l / Shift-h   Next / previous tab (move along the bar)
+  ;1 ;2 ;3 …          Jump to tab by its number
+  ;bp                 Pick a tab by letter (jump straight to it)
+  ;bd                 Close the current tab (file)   ;bo  Close all OTHER tabs
+  ;bl / ;bh           Move the current tab right / left (reorder)
+  ;fb                 Fuzzy-switch open files (better than the bar when many)
+  (Native window-layout tabs still exist too — :tabnew, gt/gT. See |jwf-tabs|.)
 
 COMPLETION (the popup menu while you type)
   Tab / S-Tab   Move down / up the suggestion list
@@ -118,43 +144,56 @@ CONTENTS                                                          *jwf-contents*
   9. Debugging (DAP) .................... |jwf-debug|
  10. Useful Vim Primitives .............. |jwf-vim|
  11. Workflow Recipes ................... |jwf-recipes|
+ 12. tmux Cookbook ...................... |jwf-tmux|
 
 ================================================================================
 1. FILE TREE                                                         *jwf-tree*
 
 The file tree (nvim-tree) is a sidebar showing your project directory.
-It is separate from the editor — you must "focus" it to interact with it.
+It is separate from the editor — it is its own window, so working with it is
+two steps: FOCUS the tree, do something, then jump BACK to your code.
 
+OPENING / FOCUSING / LEAVING:
   ;tt    Toggle tree open/closed
-  ;to    Open the tree (keeps cursor in your code buffer)
+  ;to    Open the tree but KEEP the cursor in your code (just want it visible)
+  ;tf    Open if needed AND move the cursor INTO the tree (ready to navigate)
   ;tc    Close the tree
-  ;tf    Move your cursor into the tree panel
   ;tn    Reveal the current file in the tree
            Use this when you opened a file via search and want to see where
            it lives in the folder structure.
 
-Inside the tree panel:
-  Enter     Open file / expand folder
-  o         Open file
-  a         Create new file (type name, include / at end for a folder)
-  d         Delete file
-  r         Rename file
-  x         Cut file
-  c         Copy file
-  p         Paste file
-  R         Refresh the tree (picks up external changes)
-  I         Toggle hidden files (.dotfiles, node_modules)
-  H         Toggle git-ignored files
-  q         Close the tree
+SWITCHING BETWEEN TREE AND CODE (they are side-by-side windows):
+  Ctrl-w l    From the tree, jump right into your code
+  Ctrl-w h    From your code, jump left into the tree
+  Ctrl-w w    Cycle focus through all windows (quick toggle)
+  q  (in tree) Close the tree and return to code in one key
+           Rule of thumb: ;tf to go in, Ctrl-w l (or open a file) to come back.
 
-:NvimTreeFindFile   Scroll the tree to the current buffer's file
-:NvimTreeCollapse   Collapse all open folders
+MOVING AROUND THE TREE FAST (cursor must be in the tree):
+  j / k       Down / up one entry            gg / G   Top / bottom of the tree
+  Enter / o   Open file, or expand/collapse the folder under the cursor
+  f           Live FILTER — start typing and the tree shrinks to matches.
+                F clears the filter. Fastest way to find a known filename.
+  /           Vim search within the tree (then n / N for next / prev match)
+  P           Jump to the PARENT folder of the current entry
+  <  /  >     Jump to previous / next sibling
+  J  /  K     Jump to the last / first sibling in the current folder
+  E           Expand the whole tree      W   Collapse everything back down
+  <C-]>       Make the folder under the cursor the new tree root (cd into it)
+  -           Move the tree root UP one directory
+  R           Refresh the tree (pick up files changed outside nvim)
 
-Navigate focus between panels:
-  Ctrl-w h    Focus left panel
-  Ctrl-w l    Focus right panel
-  Ctrl-w j    Focus panel below
-  Ctrl-w k    Focus panel above
+FILE OPERATIONS (cursor in the tree):
+  a         Create new file (type name; end with / to make a folder instead)
+  d         Delete file           r   Rename file
+  x         Cut file              c   Copy file          p   Paste file
+  y         Copy the filename     Y   Copy the relative path
+  I         Toggle hidden files (.dotfiles)    H   Toggle git-ignored files
+  g?        Show nvim-tree's own help with every mapping
+
+COMMANDS:
+  :NvimTreeFindFile   Scroll the tree to the current buffer's file
+  :NvimTreeCollapse   Collapse all open folders
 
 ================================================================================
 2. SEARCH & FIND                                                    *jwf-search*
@@ -428,6 +467,65 @@ Opening splits:
   :vsp        Vertical split (same file)
   :sp <file>  Horizontal split opening a different file
 
+TABS                                                                  *jwf-tabs*
+
+There are TWO different "tab" things in this config. Know which you mean:
+
+  BUFFER TABS  — the bar across the top showing one tab per open FILE, exactly
+                 like VS Code. Provided by the bufferline plugin. This is what
+                 you usually want.
+  NATIVE TABS  — Vim's :tabpages, which are whole WINDOW LAYOUTS (sets of
+                 splits), not files. Useful for keeping two different split
+                 arrangements around. Rarely needed day to day.
+
+────────────────────────────────────────────────────────────────────────────
+BUFFER TABS (VS Code style — the top bar)                        *jwf-buffertabs*
+
+Every file you open shows as a numbered tab along the top. The number on the
+tab matches the ;<number> jump keys below. Diagnostics (error/warn counts)
+show on each tab. Closing a tab just closes that file; it does not touch your
+window layout.
+
+  Shift-l            Go to the NEXT tab            (BufferLineCycleNext)
+  Shift-h            Go to the PREVIOUS tab        (BufferLineCyclePrev)
+  ;1 ;2 … ;9         Jump straight to tab number N
+  ;bp                Pick a tab by letter — labels appear on each tab, press
+                     the letter to jump there (fastest with many tabs open)
+  ;bd                Close the current tab (the buffer). Layout is preserved.
+  ;bo                Close every OTHER tab, keep the current one
+  ;bl                Move the current tab one place to the RIGHT (reorder)
+  ;bh                Move the current tab one place to the LEFT
+  ;fb                Fuzzy-pick an open file by name — scales better than the
+                     bar once you have a lot of files open (|jwf-quick|)
+  Ctrl-^             Toggle between the current and previous file (very fast)
+
+You can also left-click a tab to switch, or click its x to close it.
+
+────────────────────────────────────────────────────────────────────────────
+NATIVE TABS (window layouts)                                     *jwf-nativetabs*
+
+A native tab is a whole WINDOW LAYOUT, not a single file. Buffers are shared —
+every open file is reachable from every native tab. Use these only when you
+want a genuinely different split arrangement for a different task (e.g. one tab
+with code+test side by side, another showing a single full-screen file).
+
+  :tabnew            Open a new empty native tab
+  :tabnew <file>     Open <file> in a new native tab
+  :tab split         Put the CURRENT file in a new native tab (keeps it open)
+  Ctrl-w T           Move the current split OUT into its own new native tab
+  gt                 Next native tab            :tabn   (same)
+  gT                 Previous native tab        :tabp   (same)
+  1gt 2gt 3gt        Jump to native tab by number (count + gt)
+  :tabs              List native tabs and the windows/buffers in each
+  :tabclose  :tabc   Close the current native tab (its buffers stay open)
+  :tabonly   :tabo   Close every OTHER native tab
+  :tabmove 0         Move this native tab to the front
+  :tabmove +1 / -1   Shift it right / left one spot
+
+Heads-up: when native tabs are open, the top bar shows the NATIVE tabs instead
+of the bufferline buffer tabs. That's expected — leave native tabs alone and
+the buffer-tab bar comes back.
+
 ================================================================================
 9. DEBUGGING (DAP) — Django / debugpy                                *jwf-debug*
 
@@ -685,6 +783,134 @@ RECIPE I — Clean up errors and lint in a file                   *jwf-recipe-cl
                                        auto-fixes everything it can (EslintFixAll).
   4. ;fd                               Project-wide diagnostics picker to confirm
                                        nothing is left across the whole project.
+
+================================================================================
+12. TMUX COOKBOOK                                                     *jwf-tmux*
+
+tmux runs shell sessions inside a server that OUTLIVES your terminal. Close the
+terminal, lose the ssh connection, reboot your laptop's terminal app — the
+session and everything running in it keep going. You "attach" to see it, and
+"detach" to leave it running. All of this is separate from Neovim's toggleterm
+(|jwf-terminal|); tmux is at the shell level and survives across nvim restarts.
+
+VOCAB
+  server     One background process holding ALL your sessions. Starts on first
+             use, dies when the last session is killed.
+  session    A named workspace (like a project). Holds windows.
+  window     A tab inside a session. Holds panes.
+  pane       A split within a window (one shell each).
+  prefix     The key you press before any tmux command WHILE ATTACHED.
+             Default is  Ctrl-b  (written  C-b  below). Press it, release,
+             then press the command key.
+
+────────────────────────────────────────────────────────────────────────────
+CREATING SESSIONS                                                *jwf-tmux-create*
+
+  tmux                         Start a session (auto-named 0, 1, 2…) and attach.
+  tmux new -s work             Start a session NAMED "work" and attach to it.
+  tmux new -d -s work          Create "work" DETACHED — it runs in the
+                               background, your terminal stays where it is.
+                               (This is what the cs_claude alias does.)
+  tmux new -d -s work 'CMD'    Create detached AND run CMD in it, e.g.
+                               tmux new -d -s dev 'npm run dev'
+                               The session lives as long as CMD runs (or longer
+                               if CMD is a shell).
+
+────────────────────────────────────────────────────────────────────────────
+LISTING & ATTACHING                                             *jwf-tmux-attach*
+
+  tmux ls                      List all sessions (name, #windows, attached?).
+  tmux attach -t work          Attach to "work".  (tmux a -t work  for short)
+  tmux attach                  Attach to the most recent session.
+  tmux attach -t work -r       Attach READ-ONLY — watch without being able to
+                               type. Good for tailing a live session safely.
+  C-b d                        DETACH from the current session (while attached).
+                               Everything keeps running; you drop back to your
+                               normal shell.
+  tmux switch -t other         Jump straight to another session (when already
+                               attached to one).
+
+────────────────────────────────────────────────────────────────────────────
+TAILING OUTPUT WITHOUT ATTACHING                                  *jwf-tmux-tail*
+
+Yes — several ways, no attach needed:
+
+  Snapshot (what's on screen right now):
+    tmux capture-pane -t work -p
+        -p prints to stdout. Dump it, grep it, redirect it:
+        tmux capture-pane -t work -p | tail -30
+        tmux capture-pane -t work -p > /tmp/out.txt
+
+  Snapshot INCLUDING scrollback (not just the visible screen):
+    tmux capture-pane -t work -p -S -200      last 200 lines of history
+    tmux capture-pane -t work -p -S -          the ENTIRE scrollback
+
+  Target a specific window/pane with  session:window.pane :
+    tmux capture-pane -t work:0.1 -p
+
+  LIVE follow (true tail -f, updates as output arrives):
+    tmux pipe-pane -t work -o 'cat >> /tmp/work.log'   start mirroring
+    tail -f /tmp/work.log                              follow it anywhere
+    tmux pipe-pane -t work                             stop mirroring (no arg)
+
+  Send a command into a session without attaching:
+    tmux send-keys -t work 'ls -la' Enter
+        Enter is a KEY NAME here, so it actually runs the command. Great for
+        driving a detached session from a script.
+
+────────────────────────────────────────────────────────────────────────────
+DELETING / KILLING SESSIONS                                       *jwf-tmux-kill*
+
+  tmux kill-session -t work    Kill ONE session (and everything in it).
+  tmux kill-server             Kill EVERYTHING — all sessions at once.
+  C-b &                        Kill the current WINDOW (asks to confirm).
+  C-b x                        Kill the current PANE (asks to confirm).
+  exit  (or C-d) in the pane   Closes that pane; last pane closes the window;
+                               last window ends the session normally.
+
+────────────────────────────────────────────────────────────────────────────
+WHILE ATTACHED — the everyday keys                                *jwf-tmux-keys*
+
+All of these are pressed AFTER the prefix  C-b  (press C-b, let go, then the key):
+
+  Windows (tabs):
+    C-b c        Create a new window
+    C-b ,        Rename the current window
+    C-b n / p    Next / previous window
+    C-b 0..9     Jump to window by number
+    C-b w        Visual list of windows to pick from
+
+  Panes (splits):
+    C-b %        Split vertically (side by side)
+    C-b "        Split horizontally (top/bottom)
+    C-b ← ↑ ↓ →  Move focus between panes (arrow keys)
+    C-b o        Cycle to the next pane
+    C-b z        Zoom the current pane fullscreen (toggle)
+    C-b {  }     Swap the pane with the previous / next one
+    C-b space    Cycle through pane layouts
+
+  Sessions:
+    C-b s        Visual list of sessions to switch between
+    C-b $        Rename the current session
+    C-b d        Detach (leave it all running)
+
+  Copy / scroll:
+    C-b [        Enter copy mode — now scroll with arrows / PageUp / C-u / C-d,
+                 search with /. Press q to leave.
+                 (In copy mode: Space starts a selection, Enter copies it.)
+
+────────────────────────────────────────────────────────────────────────────
+RECIPE — long-running job you can walk away from             *jwf-tmux-recipe-job*
+
+  1. tmux new -d -s build 'make && ./deploy.sh'    Start it detached.
+  2. tmux capture-pane -t build -p | tail -20      Peek at progress anytime.
+     (or)  tmux attach -t build                    Watch it live; C-b d to leave.
+  3. tmux ls                                        Still there? "build" listed =
+                                                    still running.
+  4. tmux kill-session -t build                     Clean up when done.
+
+  Closing your terminal / losing ssh at any point does NOT stop the job — that
+  is the whole point of running it under tmux.
 
 ================================================================================
 vim:ft=help:tw=80:

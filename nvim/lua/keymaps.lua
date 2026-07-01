@@ -25,6 +25,22 @@ map('n', '<leader>ff', '<cmd>lua require("telescope").extensions.live_grep_args.
 map('n', '<leader>fc', '<cmd>Telescope grep_string<CR>',               { noremap = true, silent = true, desc = "Search word under cursor" })
 map('n', '<leader>fs', '<cmd>Telescope current_buffer_fuzzy_find<CR>', { noremap = true, silent = true, desc = "Fuzzy search in current file" })
 
+-- ── Buffer tabs (bufferline) ─────────────────────────────────────────────────
+-- The tabs along the top are your open files (buffers). These move between them
+-- like VS Code tabs. Switching files by fuzzy name is still ;fb.
+map('n', '<S-l>', '<cmd>BufferLineCycleNext<CR>',  { noremap = true, silent = true, desc = "Next buffer tab" })
+map('n', '<S-h>', '<cmd>BufferLineCyclePrev<CR>',  { noremap = true, silent = true, desc = "Previous buffer tab" })
+map('n', '<leader>bp', '<cmd>BufferLinePick<CR>',        { noremap = true, silent = true, desc = "Pick a buffer tab by letter" })
+map('n', '<leader>bd', '<cmd>bdelete<CR>',               { noremap = true, silent = true, desc = "Close current buffer tab" })
+map('n', '<leader>bo', '<cmd>BufferLineCloseOthers<CR>', { noremap = true, silent = true, desc = "Close all other buffer tabs" })
+map('n', '<leader>bh', '<cmd>BufferLineMovePrev<CR>',    { noremap = true, silent = true, desc = "Move buffer tab left" })
+map('n', '<leader>bl', '<cmd>BufferLineMoveNext<CR>',    { noremap = true, silent = true, desc = "Move buffer tab right" })
+-- Jump straight to a tab by its ordinal number (matches the number shown on it).
+for i = 1, 9 do
+  map('n', '<leader>' .. i, '<cmd>BufferLineGoToBuffer ' .. i .. '<CR>',
+      { noremap = true, silent = true, desc = "Go to buffer tab " .. i })
+end
+
 -- ── LSP navigation ─────────────────────────────────────────────────────────
 -- Ctrl-o jumps back after any of these; Ctrl-i jumps forward again.
 map('n', '<leader>gd', '<cmd>lua vim.lsp.buf.definition()<CR>',      { noremap = true, silent = true, desc = "Go to definition" })
