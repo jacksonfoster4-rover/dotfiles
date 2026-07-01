@@ -34,23 +34,46 @@ vim.g.maplocalleader = ";"
 -- so text copied in Neovim is immediately pasteable in the browser, Slack, etc.
 -- and vice versa. Requires a clipboard provider; on macOS this uses pbcopy/pbpaste
 -- which are built-in, so no extra setup is needed.
-vim.opt.clipboard = "unnamedplus"
-
--- Over SSH (e.g. editing inside a Codespace) there is no macOS clipboard and no
--- pbcopy/pbpaste, so unnamedplus yanks would go nowhere. Route the + and *
--- registers through OSC 52 instead: an escape sequence the terminal forwards to
--- your real system clipboard across the SSH link. Gated on $SSH_TTY so local
--- Neovim keeps using the native pbcopy/pbpaste provider untouched.
--- Requires a terminal with OSC 52 enabled (iTerm2: "Applications in terminal
--- may access clipboard"; kitty/wezterm/ghostty: on by default). If routed
--- through tmux, also set `set -g set-clipboard on`.
 if vim.env.SSH_TTY then
+  -- Over SSH (e.g. inside a Codespace) there is no macOS clipboard and no
+  -- pbcopy/pbpaste. Rather than route the whole clipboard through OSC 52 —
+  -- which makes `p` issue an OSC 52 *read* query that most terminals never
+  -- answer, so paste hangs or breaks — keep y/p on the normal unnamed register
+  -- (so `p` stays instant and reliable) and just MIRROR every yank up to the
+  -- macOS clipboard with an OSC 52 *copy* (write-only, always works).
+  --
+  -- Result: y (and d/c) fill the normal register AND land in your Mac
+  -- clipboard; p pastes from the normal register with no network round-trip.
+  -- Needs a terminal with OSC 52 enabled (Ghostty/kitty/wezterm: on by
+  -- default; iTerm2: enable "Applications in terminal may access clipboard").
+  -- Through tmux, also set `set -g set-clipboard on`.
+  vim.opt.clipboard = ""
   local osc52 = require("vim.ui.clipboard.osc52")
+
+  -- A copy-only OSC 52 provider: explicit "+y / "+p (and the <D-c> mapping)
+  -- still write to the Mac clipboard, but paste reads from Neovim's own +
+  -- register instead of firing an OSC 52 read query that would hang.
   vim.g.clipboard = {
-    name = "OSC 52",
-    copy  = { ["+"] = osc52.copy("+"),  ["*"] = osc52.copy("*") },
-    paste = { ["+"] = osc52.paste("+"), ["*"] = osc52.paste("*") },
+    name = "OSC 52 (copy-only)",
+    copy  = { ["+"] = osc52.copy("+"), ["*"] = osc52.copy("*") },
+    paste = {
+      ["+"] = function() return { vim.fn.getreg('+', 1, true), vim.fn.getregtype('+') } end,
+      ["*"] = function() return { vim.fn.getreg('*', 1, true), vim.fn.getregtype('*') } end,
+    },
   }
+
+  -- Mirror every yank/delete on the normal register up to the Mac clipboard.
+  vim.api.nvim_create_autocmd("TextYankPost", {
+    group = vim.api.nvim_create_augroup("osc52_yank_mirror", { clear = true }),
+    callback = function()
+      local ev = vim.v.event
+      osc52.copy("+")(ev.regcontents, ev.regtype)
+    end,
+  })
+else
+  -- Locally, macOS pbcopy/pbpaste back the clipboard, so the simple approach
+  -- works: make y/d/p read and write the system clipboard by default.
+  vim.opt.clipboard = "unnamedplus"
 end
 
 vim.g.loaded_netrw = 1
