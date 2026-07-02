@@ -114,6 +114,15 @@ for i = 1, 9 do
       { noremap = true, silent = true, desc = "Go to buffer tab " .. i })
 end
 
+-- ── Window navigation ──────────────────────────────────────────────────────
+-- Move focus between split windows with ;w + direction so you don't have to
+-- reach for Ctrl-w. hjkl = left/down/up/right, same as the built-in Ctrl-w
+-- h/j/k/l (which still works). Mnemonic: w = window.
+map('n', '<leader>wh', '<C-w>h', { noremap = true, silent = true, desc = "Window left" })
+map('n', '<leader>wj', '<C-w>j', { noremap = true, silent = true, desc = "Window down" })
+map('n', '<leader>wk', '<C-w>k', { noremap = true, silent = true, desc = "Window up" })
+map('n', '<leader>wl', '<C-w>l', { noremap = true, silent = true, desc = "Window right" })
+
 -- ── AI helpers (pair with claudecode.nvim / any chat) ───────────────────────
 -- ;a* command keymaps (toggle/send/accept-diff) live in the claudecode plugin
 -- spec. These two are plain register helpers, so they work even when pasting

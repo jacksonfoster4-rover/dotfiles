@@ -32,6 +32,7 @@ return {
         { "<leader>g", group = "Git / goto" },
         { "<leader>s", group = "Shell / search-replace" },
         { "<leader>t", group = "File tree" },
+        { "<leader>w", group = "Windows" },
         { "<leader>x", group = "Trouble (diagnostics)" },
       })
     end,

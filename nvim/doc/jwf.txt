@@ -117,7 +117,8 @@ TMUX — shell sessions that survive closing the terminal  (prefix is Ctrl-b)
   Full cookbook: |jwf-tmux|
 
 WINDOWS
-  Ctrl-w h/j/k/l   Move between split panes
+  ;wh ;wj ;wk ;wl  Move between split panes (left/down/up/right — no Ctrl reach)
+  Ctrl-w h/j/k/l   Same, the built-in way (still works)
   Ctrl-w =         Make all panes equal size
 
 TABS (the bar at the top — one tab per open file, VS Code style: bufferline)
@@ -552,7 +553,11 @@ Inside a terminal buffer:
 
 Neovim splits the screen into "windows" (panes). Each window shows a buffer.
 
-  Ctrl-w h    Move focus to the window on the LEFT
+  ;wh         Move focus to the window on the LEFT   (no Ctrl reach)
+  ;wl         Move focus to the window on the RIGHT
+  ;wj         Move focus to the window BELOW
+  ;wk         Move focus to the window ABOVE
+  Ctrl-w h    Same as ;wh — the built-in binding, still works
   Ctrl-w l    Move focus to the window on the RIGHT
   Ctrl-w j    Move focus to the window BELOW
   Ctrl-w k    Move focus to the window ABOVE
