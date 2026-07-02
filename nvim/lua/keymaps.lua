@@ -24,11 +24,50 @@ map('n', '<leader>fb', '<cmd>Telescope buffers sort_mru=true<CR>',     { noremap
 map('n', '<leader>ff', '<cmd>lua require("telescope").extensions.live_grep_args.live_grep_args()<CR>', { noremap = true, silent = true, desc = "Search string in files (with args)" })
 map('n', '<leader>fc', '<cmd>Telescope grep_string<CR>',               { noremap = true, silent = true, desc = "Search word under cursor" })
 map('n', '<leader>fs', '<cmd>Telescope current_buffer_fuzzy_find<CR>', { noremap = true, silent = true, desc = "Fuzzy search in current file" })
--- LSP symbol pickers (need a language server attached). ;fo jumps to a symbol
--- (function/class/method) IN the current file — VS Code's Ctrl-Shift-O. ;fw
--- searches symbols across the WHOLE project — VS Code's Ctrl-T.
-map('n', '<leader>fo', '<cmd>Telescope lsp_document_symbols<CR>',            { noremap = true, silent = true, desc = "Symbols in current file (outline)" })
-map('n', '<leader>fw', '<cmd>Telescope lsp_dynamic_workspace_symbols<CR>',   { noremap = true, silent = true, desc = "Symbols across the project" })
+-- ;fo jumps to a symbol IN the current file via the LSP (VS Code Ctrl-Shift-O).
+-- Single-file, so it's fast — leave it on the language server.
+map('n', '<leader>fo', '<cmd>Telescope lsp_document_symbols<CR>', { noremap = true, silent = true, desc = "Symbols in current file (outline)" })
+
+-- ;fw jumps to a symbol DEFINITION anywhere in the project (VS Code Ctrl-T).
+-- The LSP workspace-symbol version (lsp_dynamic_workspace_symbols) re-queries
+-- pyright/ts_ls on every keystroke and is painfully slow on a big monorepo, so
+-- this uses ripgrep instead: near-instant, at the cost of being text-based
+-- rather than semantic. It greps for lines where your typed name FOLLOWS a
+-- definition keyword (def/class/function/const/…), so it lands on where things
+-- are DEFINED, not every place they're used. Limitation: JS/TS class methods
+-- (which have no keyword — `foo() {`) won't match; use ;gd/;gr for those.
+vim.keymap.set('n', '<leader>fw', function()
+  local pickers    = require("telescope.pickers")
+  local finders    = require("telescope.finders")
+  local conf       = require("telescope.config").values
+  local make_entry = require("telescope.make_entry")
+
+  pickers.new({}, {
+    prompt_title = "Project symbols (ripgrep)",
+    -- new_job re-runs the command each time the prompt changes and feeds the
+    -- output straight into the list, so as you type more of the name ripgrep
+    -- narrows the results (VS Code Ctrl-T feel) with no fuzzy layer on top.
+    finder = finders.new_job(function(prompt)
+      -- Empty prompt → return nil so ripgrep isn't run with no pattern (which
+      -- would dump every definition in the repo).
+      if not prompt or prompt == "" then return nil end
+      -- Build the definition regex: a def keyword, whitespace, then the typed
+      -- name. Covers Python (def/class), JS/TS (function/const/let/var/type/
+      -- interface/enum/class), and Lua/Go-ish (function/func/struct).
+      local pattern = string.format(
+        [[(class|def|async def|func|function|const|let|var|type|interface|enum|struct)\s+%s]],
+        prompt)
+      return {
+        "rg", "--color=never", "--no-heading", "--with-filename",
+        "--line-number", "--column", "--smart-case", "-e", pattern,
+      }
+    end, make_entry.gen_from_vimgrep({}), nil, nil),
+    -- Show the matched file with the line highlighted, same as ;ff.
+    previewer = conf.grep_previewer({}),
+    -- generic_sorter lets you still fuzzy-order what ripgrep returned.
+    sorter = conf.generic_sorter({}),
+  }):find()
+end, { noremap = true, silent = true, desc = "Symbols across the project (ripgrep)" })
 
 -- ── Buffer tabs (bufferline) ─────────────────────────────────────────────────
 -- The tabs along the top are your open files (buffers). These move between them
@@ -36,7 +75,17 @@ map('n', '<leader>fw', '<cmd>Telescope lsp_dynamic_workspace_symbols<CR>',   { n
 map('n', '<S-l>', '<cmd>BufferLineCycleNext<CR>',  { noremap = true, silent = true, desc = "Next buffer tab" })
 map('n', '<S-h>', '<cmd>BufferLineCyclePrev<CR>',  { noremap = true, silent = true, desc = "Previous buffer tab" })
 map('n', '<leader>bp', '<cmd>BufferLinePick<CR>',        { noremap = true, silent = true, desc = "Pick a buffer tab by letter" })
-map('n', '<leader>bd', '<cmd>bdelete<CR>',               { noremap = true, silent = true, desc = "Close current buffer tab" })
+-- ;bd closes the current buffer tab but KEEPS the window layout. Plain :bdelete
+-- on the last code buffer leaves its window with no buffer, so nvim-tree
+-- expands to fill the screen and you have to reopen a tab by number. Instead we
+-- switch this window to the PREVIOUS buffer tab first (so the window keeps
+-- showing real code and the tree stays put), then delete the old buffer. Net
+-- effect: close tab 2 → land on tab 1; close tab 6 → land on tab 5.
+vim.keymap.set('n', '<leader>bd', function()
+  local cur = vim.api.nvim_get_current_buf()
+  vim.cmd("BufferLineCyclePrev")   -- move the window off the buffer we're closing
+  vim.cmd("bdelete " .. cur)       -- now safe to delete; window still shows a buffer
+end, { noremap = true, silent = true, desc = "Close current buffer tab (keep layout)" })
 map('n', '<leader>bo', '<cmd>BufferLineCloseOthers<CR>', { noremap = true, silent = true, desc = "Close all other buffer tabs" })
 map('n', '<leader>bh', '<cmd>BufferLineMovePrev<CR>',    { noremap = true, silent = true, desc = "Move buffer tab left" })
 map('n', '<leader>bl', '<cmd>BufferLineMoveNext<CR>',    { noremap = true, silent = true, desc = "Move buffer tab right" })

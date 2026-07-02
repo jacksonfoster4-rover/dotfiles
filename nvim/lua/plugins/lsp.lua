@@ -75,17 +75,31 @@ return {
           vim.api.nvim_create_autocmd("BufWritePre", {
             buffer = bufnr,
             callback = function()
-              -- Ask ruff only for its organize-imports action on this buffer.
+              -- Ask ruff for its organize-imports action on this buffer.
               -- make_range_params needs the client's offset_encoding in 0.11.
               local params = vim.lsp.util.make_range_params(0, client.offset_encoding)
-              params.context = { only = { "source.organizeImports.ruff" }, diagnostics = {} }
+              -- Use the PARENT kind "source.organizeImports" (not the specific
+              -- "source.organizeImports.ruff"): the LSP `only` filter matches a
+              -- requested kind AND any of its sub-kinds, so the parent catches
+              -- ruff's ".ruff"-suffixed action across ruff versions, whereas the
+              -- exact child kind would miss it if ruff renamed the suffix.
+              params.context = { only = { "source.organizeImports" }, diagnostics = {} }
 
               -- request_sync BLOCKS so the edits land before the buffer writes
               -- (an async request would race the save and often miss it).
               local resp = client.request_sync("textDocument/codeAction", params, 3000, bufnr)
               for _, r in pairs((resp or {}).result or {}) do
-                -- A code action returns either a ready-made edit or a command
-                -- to run; ruff uses an edit, but handle both to be safe.
+                -- Code actions can arrive UNRESOLVED: the server sends only the
+                -- title/kind (+ a `data` blob) and fills in the actual `edit`
+                -- only when you ask for it via codeAction/resolve. Ruff does
+                -- this, so resolve before applying or the sort silently no-ops.
+                if not r.edit and not r.command and r.data ~= nil then
+                  local resolved = client.request_sync("codeAction/resolve", r, 3000, bufnr)
+                  if resolved and resolved.result then r = resolved.result end
+                end
+
+                -- A resolved action carries either a ready-made edit or a
+                -- command to run; ruff uses an edit, but handle both to be safe.
                 if r.edit then
                   vim.lsp.util.apply_workspace_edit(r.edit, client.offset_encoding)
                 elseif r.command then

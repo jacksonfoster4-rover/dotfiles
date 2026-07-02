@@ -55,7 +55,7 @@ JUMP AROUND CODE (needs LSP)
   ;rn    Rename symbol everywhere
   ;ca    Code actions (auto-import, quick fixes)
   ;fo    Jump to a symbol (function/class) in THIS file  (VS Code Ctrl-Shift-O)
-  ;fw    Search symbols across the whole project          (VS Code Ctrl-T)
+  ;fw    Jump to a symbol DEFINITION anywhere (ripgrep)   (VS Code Ctrl-T)
   ;ih    Toggle inlay hints (inline inferred types / param names; off by default)
 
 ERRORS / WARNINGS
@@ -124,7 +124,9 @@ TABS (the bar at the top — one tab per open file, VS Code style: bufferline)
   Shift-l / Shift-h   Next / previous tab (move along the bar)
   ;1 ;2 ;3 …          Jump to tab by its number
   ;bp                 Pick a tab by letter (jump straight to it)
-  ;bd                 Close the current tab (file)   ;bo  Close all OTHER tabs
+  ;bd                 Close the current tab (file) — lands on the previous tab,
+                        keeps the tree/layout (won't fullscreen the tree)
+  ;bo                 Close all OTHER tabs
   ;bl / ;bh           Move the current tab right / left (reorder)
   ;fb                 Fuzzy-switch open files (better than the bar when many)
   (Native window-layout tabs still exist too — :tabnew, gt/gT. See |jwf-tabs|.)
@@ -283,11 +285,17 @@ as you type. Arrow keys or Ctrl-j/k navigate the results. Enter opens it.
            scrolling. VS Code's Ctrl-Shift-O / "Go to Symbol in File". Unlike
            ;fs (which fuzzy-matches raw text), this only lists real definitions.
 
-  ;fw    Symbols across the whole project (LSP workspace symbols)
-           Same idea, but searches every file the language server knows about —
-           type a function or class name and jump to its definition anywhere in
-           the project. VS Code's Ctrl-T / "Go to Symbol in Workspace". Needs a
-           language server attached (pyright, ts_ls).
+  ;fw    Symbol definitions across the whole project (ripgrep)
+           Type a name and jump to where it's DEFINED anywhere in the project.
+           VS Code's Ctrl-T / "Go to Symbol in Workspace". This uses ripgrep,
+           not the language server: the LSP workspace-symbol version re-queries
+           pyright/ts_ls on every keystroke and is very slow on a big monorepo,
+           so ripgrep trades semantic accuracy for near-instant results.
+           How it matches: it greps for your name FOLLOWING a definition
+           keyword (def, class, function, const, let, type, interface, enum,
+           struct…), so it lands on definitions, not every usage. Keep typing to
+           narrow. Limitation: JS/TS class methods have no keyword (`foo() {`)
+           so they won't show — use ;gd (go to definition) or ;gr for those.
 
   ;sr    Project-wide search AND replace (nvim-spectre)
            Opens a panel where you can preview every match before replacing.
@@ -586,7 +594,9 @@ window layout.
   ;1 ;2 … ;9         Jump straight to tab number N
   ;bp                Pick a tab by letter — labels appear on each tab, press
                      the letter to jump there (fastest with many tabs open)
-  ;bd                Close the current tab (the buffer). Layout is preserved.
+  ;bd                Close the current tab (the buffer). Switches to the
+                     PREVIOUS tab first, so the window keeps showing code and
+                     the file tree stays put instead of expanding fullscreen.
   ;bo                Close every OTHER tab, keep the current one
   ;bl                Move the current tab one place to the RIGHT (reorder)
   ;bh                Move the current tab one place to the LEFT
