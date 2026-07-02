@@ -40,6 +40,17 @@ return {
 
               -- Catch real type errors without flagging every missing annotation.
               typeCheckingMode = "basic",
+
+              -- Inlay hints: the greyed-in inline hints VS Code shows for
+              -- inferred variable types, function return types, and argument
+              -- names. pyright only PRODUCES them when these are on; whether
+              -- they're DISPLAYED is toggled per-buffer with ;ih (keymaps.lua),
+              -- and starts off.
+              inlayHints = {
+                variableTypes = true,
+                functionReturnTypes = true,
+                callArgumentNames = true,
+              },
             },
           },
         },
@@ -87,6 +98,20 @@ return {
       })
 
       -- ── TypeScript / JavaScript (ts_ls) ───────────────────────────────
+      -- Inlay hints for TS/JS — the inline inferred types, return types, and
+      -- parameter-name hints VS Code shows. ts_ls only emits them when these
+      -- are enabled; ;ih (keymaps.lua) toggles whether they're drawn, and they
+      -- start off. Same block for both languages, so define it once and reuse.
+      local ts_inlay_hints = {
+        includeInlayParameterNameHints = "all",
+        includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+        includeInlayFunctionParameterTypeHints = true,
+        includeInlayVariableTypeHints = true,
+        includeInlayPropertyDeclarationTypeHints = true,
+        includeInlayFunctionLikeReturnTypeHints = true,
+        includeInlayEnumMemberValueHints = true,
+      }
+
       vim.lsp.config('ts_ls', {
         settings = {
           typescript = {
@@ -95,9 +120,11 @@ return {
               -- break when files are moved.
               importModuleSpecifier = "relative",
             },
+            inlayHints = ts_inlay_hints,
           },
           javascript = {
             preferences = { importModuleSpecifier = "relative" },
+            inlayHints = ts_inlay_hints,
           },
         },
       })

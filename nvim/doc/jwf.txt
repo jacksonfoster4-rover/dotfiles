@@ -54,10 +54,18 @@ JUMP AROUND CODE (needs LSP)
   ;h     Show docs / type for symbol under cursor
   ;rn    Rename symbol everywhere
   ;ca    Code actions (auto-import, quick fixes)
+  ;fo    Jump to a symbol (function/class) in THIS file  (VS Code Ctrl-Shift-O)
+  ;fw    Search symbols across the whole project          (VS Code Ctrl-T)
+  ;ih    Toggle inlay hints (inline inferred types / param names; off by default)
 
 ERRORS / WARNINGS
   ]d     Next error      [d     Previous error
-  ;fd    List all errors in the project
+  ;fd    List all errors in the project (one-shot picker)
+  ;xx    Trouble — persistent Problems panel (;xX = current file only)
+
+COMMENTS
+  Ctrl-/ Toggle comment on the line (or the selection in visual mode)
+  gcc    Same, the vim way    gc<motion>  comment a motion, e.g. gcap a paragraph
 
 DEBUG (Django) — new to it? see |jwf-debug| for a 30-second walkthrough
   ;db    Set breakpoint on this line    ;da  Attach & start debugging
@@ -268,6 +276,19 @@ as you type. Arrow keys or Ctrl-j/k navigate the results. Enter opens it.
   ;fs    Fuzzy search inside the current open file only
            Good for jumping to a function or class in a long file.
 
+  ;fo    Symbols in the current file (LSP document symbols)
+           A "symbol" is a named thing the language server sees in your code —
+           a function, class, method, variable, constant. This lists them for
+           the current file so you can jump straight to one by name instead of
+           scrolling. VS Code's Ctrl-Shift-O / "Go to Symbol in File". Unlike
+           ;fs (which fuzzy-matches raw text), this only lists real definitions.
+
+  ;fw    Symbols across the whole project (LSP workspace symbols)
+           Same idea, but searches every file the language server knows about —
+           type a function or class name and jump to its definition anywhere in
+           the project. VS Code's Ctrl-T / "Go to Symbol in Workspace". Needs a
+           language server attached (pyright, ts_ls).
+
   ;sr    Project-wide search AND replace (nvim-spectre)
            Opens a panel where you can preview every match before replacing.
            Supports regex. Press <leader>R inside spectre to execute the
@@ -331,6 +352,17 @@ Use Ctrl-i to jump forward again. This works across files.
            - Add missing type annotation
            The available actions depend on what the language server offers.
 
+  ;ih    Toggle inlay hints
+           Inlay hints are the small greyed-in bits of text the editor draws
+           BETWEEN your code (not part of the file) showing inferred types,
+           function return types, and parameter names at call sites — the same
+           hints VS Code shows. They're off by default because they add visual
+           noise; ;ih flips them on/off for the current buffer. Needs a language
+           server that produces them (pyright for .py, ts_ls for .ts/.tsx).
+
+  ;fo    Symbols in the current file · ;fw  symbols across the project
+           Jump to a function/class/method by name. See |jwf-search|.
+
 FORMAT ON SAVE ~
 
   Saving a .py/.ts/.tsx/.js file auto-formats it (ruff for Python, ts_ls for
@@ -352,10 +384,27 @@ They show as virtual text at the end of the line and markers in the sign column.
 
   ;fd    Open all project-wide diagnostics in a Telescope picker
            Lets you see every error and warning across all files at once.
-           Press Enter to jump to the file and line.
+           Press Enter to jump to the file and line. This is a ONE-SHOT picker —
+           it closes when you pick something.
 
 To see the full message for a diagnostic under the cursor:
   :lua vim.diagnostic.open_float()    (or just hover over it — it auto-shows)
+
+TROUBLE — the persistent "Problems" panel ~
+
+  trouble.nvim is VS Code's Problems panel: a list you keep OPEN on the side
+  while you work through issues, grouped by file, updating live as you edit.
+  Where ;fd is a quick pop-in-pop-out picker, Trouble stays put.
+
+  ;xx    Toggle a panel of every diagnostic in the project
+  ;xX    Toggle a panel of diagnostics for the CURRENT file only
+  ;xs    Toggle a symbol outline of the current file (a live table of contents —
+           functions/classes/methods; Enter jumps to one). Doesn't steal focus.
+  ;xr    Toggle a panel of LSP references/definitions for the symbol under the
+           cursor, opened on the right. Doesn't steal focus.
+
+  Inside a Trouble panel: Enter opens the item, q closes the panel, and the
+  same ;x* key toggles it back off.
 
 ================================================================================
 5. GIT — CHANGED FILES & HISTORY                                      *jwf-git*
@@ -719,6 +768,15 @@ MARKS:
   ma        Set mark "a" at current position
   'a        Jump to mark "a"
   ''        Jump to the position before your last jump
+
+COMMENTING (built-in gc operator):
+  Ctrl-/    Toggle comment on the current line (or the selection in visual mode)
+              — bound to match VS Code. Works in normal and visual mode.
+  gcc       Toggle comment on the current line (the vim-native form)
+  gc<motion> Comment a motion, e.g. gcap (a paragraph), gc3j (3 lines down)
+  gc        In visual mode, toggle comment on the selection
+              Neovim picks the right comment syntax per language automatically
+              (# for Python, // for TS, etc.).
 
 FOLDS (if enabled):
   za        Toggle fold open/closed

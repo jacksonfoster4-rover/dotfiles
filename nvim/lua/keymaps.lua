@@ -24,6 +24,11 @@ map('n', '<leader>fb', '<cmd>Telescope buffers sort_mru=true<CR>',     { noremap
 map('n', '<leader>ff', '<cmd>lua require("telescope").extensions.live_grep_args.live_grep_args()<CR>', { noremap = true, silent = true, desc = "Search string in files (with args)" })
 map('n', '<leader>fc', '<cmd>Telescope grep_string<CR>',               { noremap = true, silent = true, desc = "Search word under cursor" })
 map('n', '<leader>fs', '<cmd>Telescope current_buffer_fuzzy_find<CR>', { noremap = true, silent = true, desc = "Fuzzy search in current file" })
+-- LSP symbol pickers (need a language server attached). ;fo jumps to a symbol
+-- (function/class/method) IN the current file — VS Code's Ctrl-Shift-O. ;fw
+-- searches symbols across the WHOLE project — VS Code's Ctrl-T.
+map('n', '<leader>fo', '<cmd>Telescope lsp_document_symbols<CR>',            { noremap = true, silent = true, desc = "Symbols in current file (outline)" })
+map('n', '<leader>fw', '<cmd>Telescope lsp_dynamic_workspace_symbols<CR>',   { noremap = true, silent = true, desc = "Symbols across the project" })
 
 -- ── Buffer tabs (bufferline) ─────────────────────────────────────────────────
 -- The tabs along the top are your open files (buffers). These move between them
@@ -92,6 +97,28 @@ map('n', '<leader>h',  '<cmd>lua vim.lsp.buf.hover()<CR>',           { noremap =
 map('n', '<leader>rn', '<cmd>lua vim.lsp.buf.rename()<CR>',          { noremap = true, silent = true, desc = "Rename symbol" })
 -- Code actions: quick-fixes, import suggestions, extract-to-function, etc.
 map('n', '<leader>ca', '<cmd>lua vim.lsp.buf.code_action()<CR>',     { noremap = true, silent = true, desc = "Code actions" })
+-- ;ih  Toggle inlay hints — the greyed inline type/return/parameter-name hints
+--       VS Code shows. Off by default (they add visual noise); flip per-buffer.
+--       Uses vim.keymap.set (not map()) because the rhs is a Lua function.
+vim.keymap.set('n', '<leader>ih', function()
+  -- is_enabled / enable take a filter table; { bufnr = 0 } means the current
+  -- buffer. Read the current state, invert it, apply it back.
+  local on = not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
+  vim.lsp.inlay_hint.enable(on, { bufnr = 0 })
+  vim.notify("Inlay hints: " .. (on and "ON" or "OFF"))
+end, { noremap = true, silent = true, desc = "Toggle inlay hints" })
+
+-- ── Comments ─────────────────────────────────────────────────────────────--
+-- Ctrl-/ toggles comments, matching VS Code's muscle memory. Neovim already
+-- ships the gc operator (gcc = toggle line, gc in visual = toggle selection);
+-- these just bind the VS Code keystroke to it. Terminals send <C-_> for Ctrl-/
+-- (a historical quirk), while GUI/newer terminals send a literal <C-/>, so map
+-- both. remap = true is REQUIRED: the rhs (gcc/gc) is itself a mapping, and
+-- without remap Neovim would treat it as the built-in (nonexistent) commands.
+vim.keymap.set('n', '<C-_>', 'gcc', { remap = true, silent = true, desc = "Toggle comment line" })
+vim.keymap.set('x', '<C-_>', 'gc',  { remap = true, silent = true, desc = "Toggle comment selection" })
+vim.keymap.set('n', '<C-/>', 'gcc', { remap = true, silent = true, desc = "Toggle comment line" })
+vim.keymap.set('x', '<C-/>', 'gc',  { remap = true, silent = true, desc = "Toggle comment selection" })
 
 -- ── Diagnostics ────────────────────────────────────────────────────────────
 -- Navigate between LSP errors/warnings in the current file.
@@ -99,6 +126,17 @@ map('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', { noremap = true, sile
 map('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', { noremap = true, silent = true, desc = "Prev diagnostic" })
 -- Show all diagnostics for the project in a Telescope picker.
 map('n', '<leader>fd', '<cmd>Telescope diagnostics<CR>',  { noremap = true, silent = true, desc = "All diagnostics" })
+
+-- ── Trouble (VS Code "Problems" panel) ───────────────────────────────────--
+-- A persistent, grouped list you keep open while cleaning up, vs the one-shot
+-- ;fd picker. All go through :Trouble, which lazy-loads the plugin on first use.
+-- ;xx  every diagnostic in the project   ;xX  just the current file
+-- ;xs  symbol outline of the current file (like a live table of contents)
+-- ;xr  LSP references/definitions for the symbol under the cursor
+map('n', '<leader>xx', '<cmd>Trouble diagnostics toggle<CR>',                        { noremap = true, silent = true, desc = "Trouble: project diagnostics" })
+map('n', '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<CR>',           { noremap = true, silent = true, desc = "Trouble: current-file diagnostics" })
+map('n', '<leader>xs', '<cmd>Trouble symbols toggle focus=false<CR>',                { noremap = true, silent = true, desc = "Trouble: symbol outline" })
+map('n', '<leader>xr', '<cmd>Trouble lsp toggle focus=false win.position=right<CR>', { noremap = true, silent = true, desc = "Trouble: LSP references/defs" })
 
 -- ── Git (Telescope) ────────────────────────────────────────────────────────
 -- All changed/staged/untracked files in the repo. Press <CR> to open a file,

@@ -69,4 +69,31 @@ return {
       })
     end,
   },
+
+  {
+    -- nvim-ts-autotag auto-closes and auto-renames HTML/JSX/TSX tags using the
+    -- treesitter parse tree: type <div> and you get the matching </div>; edit
+    -- one end of a tag pair and the other end renames to match. VS Code does
+    -- this for JSX by default — high value since the RN frontend is all TSX.
+    "windwp/nvim-ts-autotag",
+
+    -- Only load for the tag-based filetypes it acts on, so it costs nothing in
+    -- Python/Lua/etc. buffers.
+    ft = {
+      "html",
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact",
+      "tsx",
+      "jsx",
+      "xml",
+    },
+
+    -- The modern plugin has its own setup() and no longer hangs off the
+    -- nvim-treesitter config, so it configures itself independently here.
+    config = function()
+      require("nvim-ts-autotag").setup()
+    end,
+  },
 }
