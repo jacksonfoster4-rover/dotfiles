@@ -40,10 +40,40 @@ alias staging="k9s --context staging-a"
 #   claude_worktree -a 2         create if needed, then attach to <prefix>-2
 #   claude_worktree --delete 2   kill <prefix>-2 and prune its worktree (ID required)
 #   claude_worktree --delete --force 2   also discard the worktree's uncommitted changes
+#   claude_worktree cd 2         cd into <prefix>-2's worktree dir (must exist)
 # -a is the default when no flag is given.
 claude_worktree() {
   local prefix="tmux-claude"
   [[ -n "$CODESPACE_NAME" ]] && prefix="${CODESPACE_NAME%-*}"
+  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    cat <<EOF
+claude_worktree (alias: cwt) — manage tmux sessions running \`claude --worktree\`.
+Session name is "$prefix-<ID>" (ID defaults to 0).
+
+Usage:
+  cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
+  cwt cd [ID]                  cd into <prefix>-ID's worktree dir (must exist)
+  cwt --delete [--force] ID    kill <prefix>-ID and prune its worktree (ID required)
+  cwt -h|--help                show this help
+EOF
+    return 0
+  fi
+  if [[ "$1" == "cd" ]]; then
+    shift
+    local root
+    root="$(git rev-parse --show-toplevel 2>/dev/null)"
+    if [[ -z "$root" ]]; then
+      echo "claude_worktree cd must be run inside a git repo" >&2
+      return 1
+    fi
+    local dir="$root/.claude/worktrees/$prefix-${1:-0}"
+    if [[ ! -d "$dir" ]]; then
+      echo "no worktree at $dir" >&2
+      return 1
+    fi
+    cd "$dir"
+    return
+  fi
   local mode=-a
   case "$1" in
     -a|-d|--delete) mode="$1"; shift ;;
