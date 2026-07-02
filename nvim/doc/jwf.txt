@@ -83,7 +83,7 @@ TERMINAL — open / close
   ;sh    Toggle shell 1 (floating)
   ;sv    Toggle shell 1 as a horizontal split (sits under your code)
   ;s2    Toggle shell 2     ;s3  shell 3     ;s4  shell 4  (each independent)
-  ;s2v   Shell 2 as a horizontal split    (;s3v, ;s4v for the others)
+  ;sv2   Shell 2 as a horizontal split    (;sv3, ;sv4 for the others)
   Ctrl-\ Toggle shell 1 from anywhere;  2Ctrl-\ / 3Ctrl-\ open any numbered one
 
 TERMINAL — managing several
@@ -515,9 +515,9 @@ OPENING SPECIFIC SHELLS:
            shell 1, a test watcher in shell 2, a Python/Node REPL in shell 3,
            and so on — every one keeps running while hidden.
 
-  ;s2v   Toggle shell 2 as a horizontal split (like ;sv is for shell 1)
-  ;s3v   Toggle shell 3 as a horizontal split
-  ;s4v   Toggle shell 4 as a horizontal split
+  ;sv2   Toggle shell 2 as a horizontal split (like ;sv is for shell 1)
+  ;sv3   Toggle shell 3 as a horizontal split
+  ;sv4   Toggle shell 4 as a horizontal split
            Same id as the matching ;s2–;s4 above, so the float and split
            shortcuts flip the one session between layouts rather than opening
            a new shell.

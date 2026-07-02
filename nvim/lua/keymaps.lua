@@ -254,11 +254,11 @@ map('n', '<leader>s2', '<cmd>2ToggleTerm direction=float<CR>',     { noremap = t
 map('n', '<leader>s3', '<cmd>3ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Toggle shell 3 (float)" })
 map('n', '<leader>s4', '<cmd>4ToggleTerm direction=float<CR>',     { noremap = true, silent = true, desc = "Toggle shell 4 (float)" })
 -- Horizontal split variants of shells 2–4 (like ;sv is for shell 1). Same id
--- as the float shortcut above, so ;s2 and ;s2v flip the one session between
+-- as the float shortcut above, so ;s2 and ;sv2 flip the one session between
 -- float and split rather than making a new one.
-map('n', '<leader>s2v', '<cmd>2ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 2 (horizontal)" })
-map('n', '<leader>s3v', '<cmd>3ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 3 (horizontal)" })
-map('n', '<leader>s4v', '<cmd>4ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 4 (horizontal)" })
+map('n', '<leader>sv2', '<cmd>2ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 2 (horizontal)" })
+map('n', '<leader>sv3', '<cmd>3ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 3 (horizontal)" })
+map('n', '<leader>sv4', '<cmd>4ToggleTerm direction=horizontal<CR>', { noremap = true, silent = true, desc = "Toggle shell 4 (horizontal)" })
 -- Manage them all: :TermSelect lists every open terminal in a menu so you can
 -- jump straight to one by number/name without remembering which id is which.
 map('n', '<leader>ss', '<cmd>TermSelect<CR>',                      { noremap = true, silent = true, desc = "Select / switch terminal" })
