@@ -17,8 +17,8 @@ map('n', '<leader>tn', ':NvimTreeFindFile<CR>', { noremap = true, silent = true,
 
 -- ── Search ─────────────────────────────────────────────────────────────────
 map('n', '<leader>sr', "<cmd>lua require('spectre').open()<CR>",       { noremap = true, silent = true, desc = "Search and replace (project)" })
-map('n', '<leader>f',  '<cmd>Telescope find_files<CR>',                { noremap = true, silent = true, desc = "Find file by name" })
--- Jump between already-open files (buffers). Faster than ;f when the file is
+map('n', '<leader>fn', '<cmd>Telescope find_files<CR>',                { noremap = true, silent = true, desc = "Find file by name" })
+-- Jump between already-open files (buffers). Faster than ;fn when the file is
 -- already loaded — shows your open buffers most-recently-used first.
 map('n', '<leader>fb', '<cmd>Telescope buffers sort_mru=true<CR>',     { noremap = true, silent = true, desc = "Switch between open files (buffers)" })
 map('n', '<leader>ff', '<cmd>lua require("telescope").extensions.live_grep_args.live_grep_args()<CR>', { noremap = true, silent = true, desc = "Search string in files (with args)" })

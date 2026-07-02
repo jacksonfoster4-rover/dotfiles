@@ -7,21 +7,28 @@ Open this file: :help jwf
 ================================================================================
 QUICK REFERENCE — the stuff you actually use                       *jwf-quick*
 
-Leader is  ;  — so ";f" means press semicolon then f.
+Leader is  ;  — so ";fn" means press semicolon then f then n.
 Stuck? Esc gets you out of almost anything. Ctrl-o jumps back where you were.
 
 FILES & SEARCH
-  ;f     Open a file (fuzzy — type any part of the name)
-  ;ff    Search text in all files (grep)
+  ;fn    Open a file (fuzzy — type any part of the name)
+  ;ff    Search text in all files (grep) — add rg flags to filter, e.g.
+           "term" -t py (only Python) or "term" -g !*.json (exclude); |jwf-search|
   ;fc    Search for the word under the cursor
 
 FILE TREE (sidebar)
   ;tt    Toggle the tree open/closed      ;to  Open (cursor stays in code)
   ;tf    Jump your cursor INTO the tree    ;tc  Close the tree
-  ;tn    Reveal the current file in the tree
+  ;tn    Reveal current file in the tree   ;fn  fuzzy-find a file (skip the tree)
   Ctrl-w l   Jump from the tree back to your code (Ctrl-w h returns to tree)
-  Inside tree: Enter open · j/k move · f type-to-filter · P parent · q close
-               (full list + fast nav: |jwf-tree|)
+  Inside tree — move FAST, don't tap j one line at a time:
+    f      type-to-filter, tree shrinks to matches (F clears) — fastest jump
+    S      search to a node by name
+    <n>j   jump n lines by the relative number shown (e.g. 7j); <n>k goes up
+    J / K  last / first sibling      < / >  previous / next sibling
+    P      parent folder             E / W  expand all / collapse all
+    Ctrl-] cd into folder (new root) · - root up · Enter open/expand · q close
+    (full list: |jwf-tree|)
 
 SWITCHING OPEN FILES (buffers — the files you already have open)
   ;fb    Pick from open files (most-recent first) — your main file switcher
@@ -189,10 +196,15 @@ SWITCHING BETWEEN TREE AND CODE (they are side-by-side windows):
            Rule of thumb: ;tf to go in, Ctrl-w l (or open a file) to come back.
 
 MOVING AROUND THE TREE FAST (cursor must be in the tree):
+  <count>j/k  Jump by the relative line number shown next to each entry. The
+                tree uses relative numbers, so a file 7 rows down shows "7" —
+                press 7j to land on it in one go. This is the main fix for
+                crawling down one line at a time.
   j / k       Down / up one entry            gg / G   Top / bottom of the tree
   Enter / o   Open file, or expand/collapse the folder under the cursor
   f           Live FILTER — start typing and the tree shrinks to matches.
                 F clears the filter. Fastest way to find a known filename.
+  S           SEARCH to a node by name and jump straight to it
   /           Vim search within the tree (then n / N for next / prev match)
   P           Jump to the PARENT folder of the current entry
   <  /  >     Jump to previous / next sibling
@@ -220,31 +232,34 @@ COMMANDS:
 All search uses Telescope — a fuzzy finder that shows a live-updating list
 as you type. Arrow keys or Ctrl-j/k navigate the results. Enter opens it.
 
-  ;f     Find file by name (searches filenames recursively from project root)
+  ;fn    Find file by name (searches filenames recursively from project root)
            Tip: you can type partial paths, e.g. "comp/bu" to match
            "src/components/Button.tsx"
 
   ;ff    Search for a string inside all files (live grep)
-           Supports ripgrep flags — QUOTE your search term when using flags:
+           Supports ripgrep flags — QUOTE your search term when using flags,
+           then add the flags after the closing quote.
 
-           Search only Python files:
-             "grooming" -t py
+         INCLUDE ONLY certain file types (-t = ripgrep type):
+             "grooming" -t py              only Python files
+             "MyFunc" -t ts                only TypeScript files
+             "config" -t py -t ts          Python OR TypeScript (repeat -t)
+           -t takes a named type, not a glob. List all known type names with
+           the shell command:  rg --type-list  (e.g. py, ts, js, html, css).
+           To include by pattern instead of a named type, use a glob:
+             "grooming" -g *.tsx           only .tsx files
 
-           Search only TypeScript files:
-             "MyFunc" -t ts
-
-           Exclude a file type:
-             "grooming" -g !*.json
-
-           Exclude a directory:
-             "grooming" -g !some/dir/**
-
-           Multiple exclusions:
-             "grooming" -g !*.json -g !migrations/**
+         EXCLUDE files — by type (-T), or by glob/directory (-g !...):
+             "grooming" -T json            everything EXCEPT JSON files
+             "grooming" -g !*.json         exclude a glob (note the leading !)
+             "grooming" -g !some/dir/**    exclude a directory subtree
+             "grooming" -g !*.json -g !migrations/**   stack as many as needed
 
            Without quotes the whole prompt is treated as the literal search
-           string and the flags are ignored. node_modules, venv, static/dist,
-           and __pycache__ are excluded automatically on every search.
+           string and the flags are ignored. node_modules, .git, *.min.js,
+           static/dist, venv, and __pycache__ are excluded automatically on
+           every search (configured in plugins/telescope.lua) — add more there
+           to exclude them permanently instead of per-search.
 
   ;fc    Search for the word currently under your cursor across all files
            Useful for finding every usage of a variable or function name

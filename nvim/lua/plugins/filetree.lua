@@ -4,6 +4,14 @@ return {
   lazy = false,
   dependencies = { "nvim-tree/nvim-web-devicons" },
   opts = {
+    view = {
+      -- Hybrid line numbers in the tree: the cursor line shows its absolute
+      -- number, every other line shows its distance from the cursor. That
+      -- distance is the count for a motion, so you can read "7" next to a file
+      -- and press 7j to land on it in one jump instead of tapping j repeatedly.
+      number = true,
+      relativenumber = true,
+    },
     -- Keep all of nvim-tree's default in-tree keymaps, but drop the ones that
     -- open files in a NEW NATIVE TAB — we use bufferline buffer-tabs, not
     -- native tabpages, so "t" / "<C-t>" opening a native tab is unwanted.
