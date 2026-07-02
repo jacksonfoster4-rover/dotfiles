@@ -75,16 +75,35 @@ end, { noremap = true, silent = true, desc = "Symbols across the project (ripgre
 map('n', '<S-l>', '<cmd>BufferLineCycleNext<CR>',  { noremap = true, silent = true, desc = "Next buffer tab" })
 map('n', '<S-h>', '<cmd>BufferLineCyclePrev<CR>',  { noremap = true, silent = true, desc = "Previous buffer tab" })
 map('n', '<leader>bp', '<cmd>BufferLinePick<CR>',        { noremap = true, silent = true, desc = "Pick a buffer tab by letter" })
--- ;bd closes the current buffer tab but KEEPS the window layout. Plain :bdelete
--- on the last code buffer leaves its window with no buffer, so nvim-tree
--- expands to fill the screen and you have to reopen a tab by number. Instead we
--- switch this window to the PREVIOUS buffer tab first (so the window keeps
--- showing real code and the tree stays put), then delete the old buffer. Net
--- effect: close tab 2 → land on tab 1; close tab 6 → land on tab 5.
+-- ;bd closes the current buffer tab. A window should only ever show a real
+-- file or the tree — never a blank [No Name] buffer — so the behaviour depends
+-- on whether other files remain:
+--   • Other files open → switch this window to the PREVIOUS tab first, then
+--     delete the old buffer. Net effect: close tab 2 → land on 1, tab 6 → 5.
+--   • Closing the LAST file → plain :bdelete would leave a blank window (and
+--     the tree fullscreen-ing next to it). Instead open the tree, delete the
+--     file, and close the now-empty code window so ONLY the tree is left.
 vim.keymap.set('n', '<leader>bd', function()
   local cur = vim.api.nvim_get_current_buf()
-  vim.cmd("BufferLineCyclePrev")   -- move the window off the buffer we're closing
-  vim.cmd("bdelete " .. cur)       -- now safe to delete; window still shows a buffer
+  -- getbufinfo({buflisted=1}) = the open file tabs (what bufferline shows).
+  local listed = #vim.fn.getbufinfo({ buflisted = 1 })
+
+  if listed > 1 then
+    vim.cmd("BufferLineCyclePrev")   -- move this window off the buffer we're closing
+    vim.cmd("bdelete " .. cur)       -- safe to delete; window still shows a file
+    return
+  end
+
+  -- Last real file. Keep the tree, drop the blank window it would leave behind.
+  local codewin = vim.api.nvim_get_current_win()
+  require("nvim-tree.api").tree.open()      -- ensure a tree window exists
+  vim.api.nvim_set_current_win(codewin)     -- return focus to the code window
+  vim.cmd("bdelete " .. cur)                -- delete the file (window goes blank)
+  -- If the tree is now a separate window, close the blank code window so the
+  -- tree is all that remains (never leave the [No Name] buffer on screen).
+  if #vim.api.nvim_tabpage_list_wins(0) > 1 then
+    pcall(vim.api.nvim_win_close, codewin, false)
+  end
 end, { noremap = true, silent = true, desc = "Close current buffer tab (keep layout)" })
 map('n', '<leader>bo', '<cmd>BufferLineCloseOthers<CR>', { noremap = true, silent = true, desc = "Close all other buffer tabs" })
 map('n', '<leader>bh', '<cmd>BufferLineMovePrev<CR>',    { noremap = true, silent = true, desc = "Move buffer tab left" })

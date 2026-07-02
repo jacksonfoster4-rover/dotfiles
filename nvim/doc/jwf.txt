@@ -597,6 +597,9 @@ window layout.
   ;bd                Close the current tab (the buffer). Switches to the
                      PREVIOUS tab first, so the window keeps showing code and
                      the file tree stays put instead of expanding fullscreen.
+                     Closing the LAST open file leaves ONLY the tree (never a
+                     blank [No Name] window) — a window always shows a real file
+                     or the tree.
   ;bo                Close every OTHER tab, keep the current one
   ;bl                Move the current tab one place to the RIGHT (reorder)
   ;bh                Move the current tab one place to the LEFT
