@@ -52,6 +52,11 @@ ERRORS / WARNINGS
   ]d     Next error      [d     Previous error
   ;fd    List all errors in the project
 
+DEBUG (Django) — new to it? see |jwf-debug| for a 30-second walkthrough
+  ;db    Set breakpoint on this line    ;da  Attach & start debugging
+  ;dh    Show a variable's value        ;dr  Python prompt at the paused line
+  ;dn    Next line   ;di  Step in   ;do  Step out   ;dc  Continue   ;dt  Stop
+
 GIT
   ;gs    See changed files          ;G     Full git panel (stage/commit/push)
   ;ga    Stage this hunk            ;gp    Preview this hunk
@@ -557,41 +562,75 @@ the buffer-tab bar comes back.
 
 Neovim uses the Debug Adapter Protocol (DAP) — the same protocol VS Code uses.
 nvim-dap acts as the DAP client; debugpy (running inside the Docker container)
-acts as the DAP server. They talk over TCP on port 5678.
+acts as the DAP server. The Django dev server runs TWO uwsgi workers, each with
+its own debugpy listener, on ports 5678 and 5680.
 
-STEP 1 — Start the debug container
-  Open a floating shell with  ;sh  and run:
-    cd ~/projects/web && ./bin/debugpy.sh
+FIRST TIME? — THE 30-SECOND VERSION ~
 
-  What debugpy.sh does:
-    - Syncs Python packages from the container to ~/projects/web/venv/
-    - Updates .env with PYTHONPATH so pyright finds installed libraries
-    - Stops the normal web container temporarily
-    - Starts an ephemeral container with ENABLE_DEBUGPY=true, publishing:
-        localhost:5678  →  debugpy listener (DAP port)
-        localhost:8000  →  Django web server
-    - On exit (Ctrl-C), restores the normal container automatically
+  Never debugged in Neovim? It's the same idea as VS Code's debugger, just
+  driven by keys instead of clicks. The whole loop is four keystrokes:
 
-  Wait until you see:  "Starting development server at http://0.0.0.0:8000/"
-  At that point debugpy is listening and waiting for Neovim to attach.
+    1. Put your cursor on a line you want to freeze on, press  ;db
+       (a red ● appears — that's a "breakpoint").
+    2. Press  ;da  to attach. A panel opens on the left (variables, call
+       stack) and one on the bottom (a Python console). Debugger is now live.
+    3. Load the page / hit the API endpoint that runs that line in your
+       browser or with curl. The moment Django reaches your ● it FREEZES,
+       and a green ▶ shows the exact line it stopped on.
+    4. Now poke around while it's frozen:
+         ;dh  on a variable  → shows its value in a popup
+         ;dr                 → opens a Python prompt IN that frozen moment,
+                               so you can type  request.user  and see the answer
+         ;dn / ;di / ;do     → run the next line / step into a call / step out
+         ;dc                 → un-freeze, run until the next ● (or the next
+                               request hits it again)
+       Done? Press  ;dt  to detach. Your server keeps running the whole time.
 
-STEP 2 — Set breakpoints
+  Mental model: a breakpoint is a "pause here" flag. Attaching connects Neovim
+  to the already-running Django so it can honor those flags. Nothing you do
+  here changes or restarts the server — you're just watching it run.
+
+  Gotchas worth knowing up front:
+    - Nothing happens until a real request actually runs the line. Set the
+      breakpoint, THEN trigger the code — a breakpoint on code that never runs
+      just never fires.
+    - Always attach with ;da (both workers), not ;dc (one worker). Django
+      spreads requests across two workers; attach to one and roughly half your
+      requests slip past the breakpoint and it looks "broken."
+    - If the ● shows hollow ○ instead of solid, debugpy couldn't map the file
+      (see PATH MAPPINGS below) — the breakpoint won't fire.
+
+  The step-by-step below is the same thing, in more detail.
+
+STEP 0 — Nothing to start
+  The Codespaces web container sets ENABLE_DEBUGPY=true, so debugpy is always
+  listening on 5678 + 5680 whenever your normal dev server is running. There is
+  no separate debug container and no bin/debugpy.sh — just have the app running.
+
+STEP 1 — Set breakpoints
   Open any Django Python file and press  ;db  on the line you want to pause on.
   A red dot ● appears in the sign column. You can set as many as you like.
 
-STEP 3 — Attach
-  Press  ;dc  (Continue / attach).
+STEP 2 — Attach
+  Press  ;da  (attach to Django).
+  This attaches to BOTH uwsgi workers (5678 + 5680) at once. This matters:
+  uwsgi load-balances each web request across the two workers, so if you attach
+  to only one, every request the other worker serves sails past your breakpoint.
+  ;da is the nvim equivalent of VS Code's "Django Debug All Workers" compound.
+
   The DAP UI opens automatically showing:
     - Left panel: Variables, Watches, Call Stack, Breakpoints list
     - Bottom panel: REPL + Django console output
-  Django is now running normally and waiting for requests.
+  Django keeps running normally and waiting for requests.
 
-STEP 4 — Trigger the code
+  (;dc instead attaches to a single worker you pick — rarely what you want.)
+
+STEP 3 — Trigger the code
   Make a web request that exercises the code path with your breakpoint.
   Django will pause when it hits the breakpoint and the DAP UI highlights
   the current line with a green arrow ▶.
 
-STEP 5 — Inspect and step
+STEP 4 — Inspect and step
   ;dn    Step over — run this line, stop at the next
   ;di    Step into — follow a function call inside it
   ;do    Step out — finish the current function, stop at the caller
@@ -602,12 +641,13 @@ STEP 5 — Inspect and step
            Type any Python expression to evaluate it in the paused scope,
            e.g.:  user.email  or  self.request.POST
 
-STEP 6 — Terminate
+STEP 5 — Terminate
   ;dt    Disconnect from debugpy. Django continues running normally.
-         The container keeps running until you Ctrl-C in the terminal.
+         Both worker sessions detach; the dev server is unaffected.
 
 ALL DEBUG SHORTCUTS:
-  ;dc    Continue / attach to debugpy
+  ;da    Attach to Django — both uwsgi workers (5678 + 5680) at once
+  ;dc    Continue / attach a single worker
   ;db    Toggle breakpoint on current line
   ;dB    Conditional breakpoint (prompts for a Python expression)
   ;dn    Step over
@@ -622,10 +662,13 @@ ALL DEBUG SHORTCUTS:
 
 PATH MAPPINGS (why breakpoints work):
   The source code exists in two places:
-    Host (Neovim):     ~/projects/web/src/aplaceforrover/
-    Container (Django): /web/src/aplaceforrover/
+    Host (Neovim):      /workspaces/web/
+    Container (Django): /web/
   debug.lua maps these paths so breakpoints set in Neovim match the file
   paths that debugpy reports. Without this, breakpoints silently never fire.
+  A second mapping (/workspaces/web/venv/lib/python3.11/site-packages →
+  /usr/local/lib/python3.11/site-packages) lets you step into installed
+  packages. These mirror .vscode/launch.json's Django configs.
 
 ================================================================================
 10. USEFUL VIM PRIMITIVES                                             *jwf-vim*
@@ -732,11 +775,10 @@ RECIPE C — Stage a focused, partial commit                      *jwf-recipe-pa
 ────────────────────────────────────────────────────────────────────────────
 RECIPE D — Debug a single Django request end to end             *jwf-recipe-debug*
 
-  1. ;sh                               Floating shell.
-       cd ~/projects/web && ./bin/debugpy.sh
-     Wait for "Starting development server".
+  1. Have your normal dev server running (debugpy is always listening in the
+     Codespaces web container — nothing extra to start).
   2. Open the view file, ;db on the line to pause at.
-  3. ;dc                               Attach. DAP UI opens.
+  3. ;da                               Attach to both workers. DAP UI opens.
   4. Trigger the request (browser / curl). Execution pauses at the line.
   5. ;dh   over a variable             Show its value inline.
      ;dr                               REPL — evaluate  self.request.POST  etc.

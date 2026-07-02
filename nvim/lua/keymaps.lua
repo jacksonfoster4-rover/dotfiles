@@ -175,12 +175,18 @@ map('i', '<D-v>', '<C-r>+',     { noremap = true, silent = true, desc = "Paste f
 map('v', '<D-v>', '"+p',        { noremap = true, silent = true, desc = "Paste over selection from clipboard" })
 
 -- ── Debugging (DAP) ────────────────────────────────────────────────────────
--- Workflow: run ./bin/debugpy.sh in ;sh, wait for "Starting development server",
--- then press ;dc to attach. Set breakpoints first with ;db.
+-- Workflow: set breakpoints with ;db, then ;da to attach. debugpy is always
+-- listening in the Codespaces web container (ENABLE_DEBUGPY=true) — no script
+-- to start. See plugins/debug.lua for the full workflow.
 --
--- ;dc  Continue / attach to debugpy
---       On first press: opens the DAP UI and attaches to localhost:5678.
---       On subsequent presses: resumes execution until the next breakpoint.
+-- ;da  Attach to Django — connects to BOTH uwsgi workers (5678 + 5680) at once.
+--       Use this to start debugging. uwsgi spreads requests across both
+--       workers, so attaching to only one would miss half your breakpoints.
+map('n', '<leader>da', '<cmd>DjangoDebugAttach<CR>',                      { noremap = true, silent = true, desc = "Debug: attach to Django (both workers)" })
+
+-- ;dc  Continue / attach
+--       While paused: resumes execution until the next breakpoint.
+--       While idle: prompts to attach to a single worker (prefer ;da instead).
 map('n', '<leader>dc', '<cmd>lua require("dap").continue()<CR>',          { noremap = true, silent = true, desc = "Debug: continue / attach" })
 
 -- ;db  Toggle breakpoint on the current line

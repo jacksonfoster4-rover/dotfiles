@@ -7,97 +7,106 @@ return {
     --
     -- HOW THE DJANGO / DEBUGPY WORKFLOW WORKS:
     --
-    --   1. In a terminal (;sh), run:  cd ~/projects/web && ./bin/debugpy.sh
-    --      This starts an ephemeral Docker container that:
-    --        - runs  manage.py runserver 0.0.0.0:8000
-    --        - with  ENABLE_DEBUGPY=true  which causes manage.py to call
-    --          debugpy.listen(("0.0.0.0", 5678)) before the server loop
-    --        - publishes port 5678 → localhost:5678  (the DAP port)
-    --        - publishes port 8000 → localhost:8000  (the web port)
+    --   0. Nothing to start manually. The Codespaces web container sets
+    --      ENABLE_DEBUGPY=true (docker-compose.dev.codespaces.yml), so debugpy
+    --      is ALWAYS listening whenever your normal dev server is running.
+    --      There is no separate "debug container" or bin/debugpy.sh.
     --
-    --   2. Wait until you see "Starting development server" in the terminal.
-    --      debugpy is now listening and waiting for a DAP client to attach.
+    --   1. Set breakpoints with ;db on any line in the Django source.
     --
-    --   3. In Neovim, press ;dc  (DapContinue / attach).
-    --      nvim-dap connects to localhost:5678, completes the DAP handshake,
-    --      and Django resumes serving requests in debug mode.
+    --   2. Press ;da (attach to Django). This attaches to BOTH uwsgi workers
+    --      at once — see the two-worker note below for why that matters.
+    --      The DAP UI opens automatically.
     --
-    --   4. Set breakpoints with ;db on any line in the Django source.
+    --   3. Make a web request (browser, curl, etc.) to trigger the code path
+    --      that hits your breakpoint. Execution pauses on whichever worker
+    --      served the request and the DAP UI highlights the current line.
     --
-    --   5. Make a web request (browser, curl, etc.) to trigger the code path
-    --      that hits your breakpoint. Execution pauses and the DAP UI opens.
-    --
-    --   6. Use ;dn / ;di / ;do to step through code, ;dr to open the REPL,
+    --   4. Use ;dn / ;di / ;do to step through code, ;dr to open the REPL,
     --      ;dc to continue to the next breakpoint.
     --
-    --   7. When done: ;dt to terminate the session, then Ctrl-C in the
-    --      terminal to shut down debugpy.sh and restore the normal container.
+    --   5. When done: ;dt to terminate. The dev server keeps running normally.
     "mfussenegger/nvim-dap",
 
     config = function()
       local dap = require("dap")
 
       -- ── Adapter definition ──────────────────────────────────────────────
-      -- "server" type means we connect to an already-running debug adapter
-      -- over TCP rather than launching a new one ourselves. debugpy.sh has
-      -- already started debugpy inside the container; we just attach.
-      dap.adapters.python_remote = {
-        type = "server",
-        host = "127.0.0.1",
-        port = 5678,
-        -- options.initialize_timeout_sec: how long to wait for debugpy to
-        -- respond to the initial DAP handshake. 20s is generous; the
-        -- container is usually up well before this.
-        options = {
-          initialize_timeout_sec = 20,
-        },
-      }
+      -- "server" type = connect to an already-running debug adapter over TCP
+      -- rather than launching one ourselves (debugpy is already listening
+      -- inside the web container). Defined as a FUNCTION so each configuration
+      -- can supply its own port via config.port — the Django dev server runs
+      -- two uwsgi workers (config/wsgi/development.ini: processes = 2), each
+      -- with its own debugpy listener, on 5678 and 5680.
+      dap.adapters.python_remote = function(callback, config)
+        callback({
+          type = "server",
+          host = "127.0.0.1",
+          port = config.port,
+          -- initialize_timeout_sec: how long to wait for debugpy to answer the
+          -- initial DAP handshake. 20s is generous; it's usually up already.
+          options = { initialize_timeout_sec = 20 },
+        })
+      end
 
-      -- ── Configuration ───────────────────────────────────────────────────
-      -- A "configuration" describes a specific debug scenario. You pick one
-      -- when you run ;dc (DapContinue). We define one for the Django container.
-      dap.configurations.python = {
+      -- ── Path mappings ────────────────────────────────────────────────────
+      -- The single most important setting for Docker debugging. debugpy runs
+      -- INSIDE the container and reports file paths as they exist there
+      -- (/web/...); Neovim runs on the Codespace HOST where the same files
+      -- live under /workspaces/web/... . Without a mapping, a breakpoint's
+      -- host path won't match any path debugpy knows, so it silently never
+      -- fires. These entries mirror .vscode/launch.json's Django configs.
+      --
+      -- Order matters: the more specific venv → site-packages entry MUST come
+      -- before the general repo entry, or the general one shadows it. The venv
+      -- entry is what lets you step into installed packages (Django, DRF, …).
+      local path_mappings = {
         {
-          -- Must match the adapter name defined above.
-          type    = "python_remote",
-
-          -- "attach" = connect to an already-running process.
-          -- The alternative is "launch" (start a new process), but Django
-          -- lives inside Docker so we always attach.
-          request = "attach",
-          name    = "Attach to Django container (debugpy.sh)",
-
-          -- pathMappings is the most important setting for Docker debugging.
-          -- debugpy runs INSIDE the container and knows file paths as they
-          -- exist there (e.g. /web/src/aplaceforrover/users/views.py).
-          -- Neovim runs on the HOST and has the same files at a different
-          -- path (~/projects/web/src/aplaceforrover/users/views.py).
-          --
-          -- Without this mapping, when you set a breakpoint in Neovim the
-          -- path Neovim sends to debugpy won't match any file it knows about,
-          -- so the breakpoint will silently never fire.
-          --
-          -- The mapping tells debugpy: "any path that starts with
-          -- /web/src/aplaceforrover in the container corresponds to
-          -- ~/projects/web/src/aplaceforrover on the host."
-          pathMappings = {
-            {
-              localRoot  = vim.fn.expand("~/projects/web/src/aplaceforrover"),
-              remoteRoot = "/web/src/aplaceforrover",
-            },
-          },
-
-          -- justMyCode = true: only pause on breakpoints in YOUR code.
-          -- Set to false if you need to step into Django internals or
-          -- third-party libraries to understand what's happening.
-          justMyCode = true,
-
-          -- redirectOutput: stream stdout/stderr from the Django process
-          -- into the DAP console panel so you can see print() output and
-          -- Django log messages without switching to the terminal.
-          redirectOutput = true,
+          localRoot  = "/workspaces/web/venv/lib/python3.11/site-packages",
+          remoteRoot = "/usr/local/lib/python3.11/site-packages",
+        },
+        {
+          localRoot  = "/workspaces/web",
+          remoteRoot = "/web",
         },
       }
+
+      -- ── Configurations (one per uwsgi worker) ────────────────────────────
+      -- uwsgi load-balances every web request across its two workers, so a
+      -- breakpoint only fires reliably if you're attached to BOTH: attach to
+      -- just 5678 and every request the 5680 worker happens to serve sails
+      -- straight past your breakpoint (this is why debugging "randomly" didn't
+      -- work before). Attaching to both is the nvim equivalent of VSCode's
+      -- "Django Debug All Workers" compound in .vscode/launch.json.
+      local function worker(name, port)
+        return {
+          type       = "python_remote",   -- must match the adapter name above
+          request    = "attach",          -- connect to a running process
+          name       = name,
+          port       = port,              -- read by the adapter function above
+          django     = true,              -- resolve Django template frames too
+          justMyCode = false,             -- allow stepping into site-packages
+          -- redirectOutput: stream the process's stdout/stderr into the DAP
+          -- console so print()/log output shows without switching windows.
+          redirectOutput = true,
+          pathMappings = path_mappings,
+        }
+      end
+
+      dap.configurations.python = {
+        worker("Django worker 1 (5678)", 5678),
+        worker("Django worker 2 (5680)", 5680),
+      }
+
+      -- Attach to BOTH workers in one keystroke (VSCode compound equivalent).
+      -- nvim-dap supports concurrent sessions; dap-ui lists both and lets you
+      -- switch between them. Exposed as :DjangoDebugAttach and bound to ;da
+      -- (see keymaps.lua). Running ;dc instead lets you pick a single worker.
+      vim.api.nvim_create_user_command("DjangoDebugAttach", function()
+        for _, cfg in ipairs(dap.configurations.python) do
+          dap.run(cfg)
+        end
+      end, { desc = "Attach the debugger to both Django uwsgi workers" })
 
       -- ── Signs (gutter indicators) ───────────────────────────────────────
       -- Show clear symbols in the sign column so you can see at a glance
