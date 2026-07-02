@@ -133,6 +133,7 @@ MOVING FAST (no arrow keys)
 
 SAVE / QUIT / UNDO (plain vim)
   :w     Save        :q     Quit        :wq    Save & quit       :q!  Quit, no save
+  :noa w Save WITHOUT formatting (skips format-on-save + eslint fix; any filetype)
   :wa    Save ALL open files            :qa   Quit everything    ZZ  Save & quit
   u      Undo        Ctrl-r Redo
   /foo   Search in file    n / N  next / prev match
@@ -262,9 +263,11 @@ Telescope universal controls:
 3. LSP NAVIGATION                                                      *jwf-lsp*
 
 LSP (Language Server Protocol) provides IDE-level features by running a
-language-specific server (pyright for Python, ts_ls for TypeScript) that
-understands your code. All the commands below only work when a server has
-attached to the file you are editing (check :LspInfo).
+language-specific server that understands your code. Python runs two: pyright
+for types/navigation and ruff for linting + formatting (pyright can't format,
+so ruff is what makes format-on-save work on .py). TypeScript/JavaScript use
+ts_ls plus eslint. All the commands below only work when a server has attached
+to the file you are editing (check :LspInfo).
 
 After any "go to" command, use Ctrl-o to jump back to where you were.
 Use Ctrl-i to jump forward again. This works across files.
@@ -306,6 +309,16 @@ Use Ctrl-i to jump forward again. This works across files.
            - Extract selected code to a function
            - Add missing type annotation
            The available actions depend on what the language server offers.
+
+FORMAT ON SAVE ~
+
+  Saving a .py/.ts/.tsx/.js file auto-formats it (ruff for Python, ts_ls for
+  TS/JS) and, on JS/TS, applies eslint's auto-fixes. To save WITHOUT any of
+  that:
+
+  :noa w   `noautocmd write` — writes the buffer without firing any autocmds,
+           so format-on-save and eslint's fix-on-save are both skipped. Works
+           for any filetype. Add ! (`:noa w!`) to force-write a readonly file.
 
 ================================================================================
 4. DIAGNOSTICS                                                 *jwf-diagnostics*
@@ -792,7 +805,7 @@ RECIPE I — Clean up errors and lint in a file                   *jwf-recipe-cl
                                        suggested fix, add a type annotation.
   3. :w                                Save. On .py/.ts/.tsx/.js this runs
                                        format-on-save; on JS/TS, ESLint also
-                                       auto-fixes everything it can (EslintFixAll).
+                                       auto-fixes everything it can.
   4. ;fd                               Project-wide diagnostics picker to confirm
                                        nothing is left across the whole project.
 

@@ -9,7 +9,8 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- format on save
+-- format on save. To save WITHOUT formatting, use `:noa w` (noautocmd write) —
+-- it fires no autocmds, so this and eslint's fix-on-save are both skipped.
 vim.api.nvim_create_autocmd("BufWritePost", {
     pattern = {"*.py", "*.ts", "*.tsx", "*.js"},
     callback = function()

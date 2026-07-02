@@ -19,7 +19,11 @@ return {
     config = function()
       require("mason-lspconfig").setup({
         ensure_installed = {
-          "pyright",   -- Python type checker + LSP
+          "pyright",   -- Python type checker + LSP (types/imports only — no formatting)
+          "ruff",      -- Python linter + formatter LSP. Pyright can't format, so
+                       -- format-on-save had "no matching language servers" for .py;
+                       -- ruff provides the formatting capability. black-compatible
+                       -- and reads the project's pyproject.toml.
           "ts_ls",     -- TypeScript/JavaScript LSP (renamed from "tsserver" in 2024;
                        -- the old name causes a silent install-but-no-attach failure)
           "eslint",    -- ESLint language server for JS/TS linting rules
