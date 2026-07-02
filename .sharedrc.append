@@ -59,7 +59,7 @@ Session name is "$prefix-<ID>" (ID defaults to 0).
 
 Usage:
   cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
-  cwt cd [ID]                  cd into <prefix>-ID's worktree dir (must exist)
+  cwt cd ID                    cd into <prefix>-ID's worktree dir (ID required, must exist)
   cwt cd -                     cd back to the main worktree
   cwt --delete [--force] ID    kill <prefix>-ID and prune its worktree (ID required)
   cwt -h|--help                show this help
@@ -88,9 +88,13 @@ EOF
       cd "$main"
       return
     fi
-    # Otherwise cd into a specific session's worktree. "${1:-0}" means "use $1,
-    # or 0 if $1 is empty" — so bare `cwt cd` targets session 0.
-    local dir="$root/.claude/worktrees/$prefix-${1:-0}"
+    # Otherwise cd into a specific session's worktree. The ID is required — bare
+    # `cwt cd` is ambiguous, so error out instead of guessing a default.
+    if [[ -z "$1" ]]; then
+      echo "claude_worktree cd requires a session ID (e.g. cwt cd 0)" >&2
+      return 1
+    fi
+    local dir="$root/.claude/worktrees/$prefix-$1"
     if [[ ! -d "$dir" ]]; then
       echo "no worktree at $dir" >&2
       return 1
