@@ -1,5 +1,4 @@
 export DOTFILES_PATH="/workspaces/.codespaces/.persistedshare/dotfiles"
-alias yarn="pnpm"
 alias start_rxn="(cd src/frontend/reactNativeApp && pnpm start)"
 alias preload_rxn="curl -o /dev/null 'http://localhost:8081/index.bundle?platform=ios&dev=true&lazy=true&minify=false&inlineSourceMap=false&modulesOnly=false&runModule=true&excludeSource=true&sourcePaths=url-server&app=com.rover.Rover-com' \
 -H 'Host: localhost:8081' \
