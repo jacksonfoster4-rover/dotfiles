@@ -108,6 +108,40 @@ return {
         end
       end, { desc = "Attach the debugger to both Django uwsgi workers" })
 
+      -- ── Exception breakpoints ────────────────────────────────────────────
+      -- Separate from the ;db line breakpoints: these tell debugpy to also
+      -- pause whenever an EXCEPTION occurs. debugpy offers "raised" (every
+      -- raise, even caught ones — very noisy), "uncaught" (propagates out
+      -- unhandled), and "userUnhandled" (escapes YOUR code into a framework).
+      --
+      -- nvim-dap's default ("default") enables whatever the adapter marks
+      -- on-by-default, which for debugpy stops on unhandled exceptions — the
+      -- auto-stopping we DON'T want. An empty list disables all of them, so out
+      -- of the box only your explicit ;db breakpoints pause execution.
+      dap.defaults.fallback.exception_breakpoints = {}
+
+      -- ;de toggles stopping on unhandled exceptions (uncaught + userUnhandled;
+      -- "raised" is left out as too noisy for a toggle — use the interactive
+      -- :lua require("dap").set_exception_breakpoints() if you need it).
+      --
+      -- Two things have to happen for the toggle to actually take effect:
+      --   1. Update the fallback default so any session started LATER inherits
+      --      the new state.
+      --   2. Push it to every session already running RIGHT NOW — and there are
+      --      two (one per uwsgi worker), so we loop over dap.sessions(). If we
+      --      only set the active session, a request served by the other worker
+      --      would ignore the exception breakpoint.
+      local exceptions_on = false
+      vim.api.nvim_create_user_command("DapToggleExceptions", function()
+        exceptions_on = not exceptions_on
+        local filters = exceptions_on and { "uncaught", "userUnhandled" } or {}
+        dap.defaults.fallback.exception_breakpoints = filters
+        for _, session in pairs(dap.sessions()) do
+          session:set_exception_breakpoints(filters)
+        end
+        vim.notify("Stop on unhandled exceptions: " .. (exceptions_on and "ON" or "OFF"))
+      end, { desc = "Toggle stopping on unhandled exceptions" })
+
       -- ── Signs (gutter indicators) ───────────────────────────────────────
       -- Show clear symbols in the sign column so you can see at a glance
       -- where breakpoints are set and which line execution is paused on.

@@ -599,6 +599,9 @@ FIRST TIME? — THE 30-SECOND VERSION ~
       requests slip past the breakpoint and it looks "broken."
     - If the ● shows hollow ○ instead of solid, debugpy couldn't map the file
       (see PATH MAPPINGS below) — the breakpoint won't fire.
+    - Errors do NOT auto-pause the debugger by default — only your ;db lines
+      do. Press ;de to toggle stopping on unhandled exceptions too (see
+      EXCEPTION BREAKPOINTS below).
 
   The step-by-step below is the same thing, in more detail.
 
@@ -659,6 +662,23 @@ ALL DEBUG SHORTCUTS:
   ;dl    List all breakpoints
   ;dC    Clear ALL breakpoints
   ;du    Toggle DAP UI open/closed manually
+  ;de    Toggle stopping on unhandled exceptions on/off (see below)
+
+EXCEPTION BREAKPOINTS (stopping on errors, not just ;db lines):
+  Besides the ;db line breakpoints, debugpy can also pause the moment an
+  exception occurs. By default this is turned OFF here — only your ;db lines
+  stop — so a stack trace doesn't yank you into the debugger unless you asked.
+
+  Press  ;de  to toggle it. ON pauses whenever an exception goes unhandled
+  (debugpy's "uncaught" + "userUnhandled" filters — i.e. it escapes your code
+  or crashes the request); press ;de again to turn it back OFF. The toggle
+  applies to both worker sessions at once, and a message confirms the new
+  state. It also resets to OFF when you re-attach with ;da.
+
+  ;de deliberately leaves out the noisy "raised" filter (which stops on every
+  raise, even ones caught by a try/except). If you're hunting where a swallowed
+  error starts and want that, set it manually with:
+    :lua require("dap").set_exception_breakpoints({ "raised" })
 
 PATH MAPPINGS (why breakpoints work):
   The source code exists in two places:

@@ -232,3 +232,9 @@ map('n', '<leader>du', '<cmd>lua require("dapui").toggle()<CR>',           { nor
 -- ;dh  Hover: show the value of the variable/expression under the cursor
 --       Only works while paused at a breakpoint.
 map('n', '<leader>dh', '<cmd>lua require("dap.ui.widgets").hover()<CR>',   { noremap = true, silent = true, desc = "Debug: hover value" })
+
+-- ;de  Toggle stopping on unhandled exceptions on/off.
+--       Default is OFF — only ;db line breakpoints stop. Press ;de to also
+--       pause the moment an exception goes unhandled (uncaught + userUnhandled);
+--       press again to turn it back off. Applies to both worker sessions.
+map('n', '<leader>de', '<cmd>DapToggleExceptions<CR>',                    { noremap = true, silent = true, desc = "Debug: toggle stop-on-exception" })
