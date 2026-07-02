@@ -14,8 +14,13 @@ alias msp="m shell_plus"
 # Pull the latest dotfiles and re-run the installer (updates nvim config +
 # plugins). Runs install.sh from the repo root since it relies on $(pwd).
 reload_dotfiles() {
+  # +Lazy! sync updates plugins; +TSUpdateSync recompiles every treesitter
+  # parser against the running nvim's ABI. The Sync variant blocks (plain
+  # +TSUpdate is async and would lose the race against install.sh's +qa),
+  # so parsers never go stale after a nvim upgrade — a stale parser is what
+  # throws "attempt to call method 'range' (a nil value)" in the highlighter.
   git -C "$DOTFILES_PATH" pull --ff-only &&
-    (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync") || return
+    (cd "$DOTFILES_PATH" && ./install.sh "+Lazy! sync" "+TSUpdateSync") || return
   # Reload the current shell's rc so new aliases/functions are picked up now.
   if [ -n "$ZSH_VERSION" ]; then
     source ~/.zshrc

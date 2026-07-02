@@ -42,6 +42,7 @@ AI / CLAUDE CODE
 
 JUMP AROUND CODE (needs LSP)
   ;gd    Go to definition         (Ctrl-o = jump back)
+  ;gt    Go to type definition    (jumps to the type/interface of a variable)
   ;gr    Find all references
   ;h     Show docs / type for symbol under cursor
   ;rn    Rename symbol everywhere
@@ -313,8 +314,8 @@ Use Ctrl-i to jump forward again. This works across files.
 FORMAT ON SAVE ~
 
   Saving a .py/.ts/.tsx/.js file auto-formats it (ruff for Python, ts_ls for
-  TS/JS) and, on JS/TS, applies eslint's auto-fixes. To save WITHOUT any of
-  that:
+  TS/JS). On Python it also sorts imports (ruff's isort). On JS/TS it applies
+  eslint's auto-fixes. To save WITHOUT any of that:
 
   :noa w   `noautocmd write` — writes the buffer without firing any autocmds,
            so format-on-save and eslint's fix-on-save are both skipped. Works

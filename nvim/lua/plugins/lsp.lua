@@ -52,10 +52,37 @@ return {
       -- (and fast linting). When both are attached, vim.lsp.buf.format() picks
       -- ruff because it's the one advertising the formatting capability.
       vim.lsp.config('ruff', {
-        -- Let pyright own hover/definitions; ruff only lints + formats. Without
-        -- this you'd get duplicate hover popups from two servers on the same buffer.
-        on_attach = function(client, _)
+        on_attach = function(client, bufnr)
+          -- Let pyright own hover/definitions; ruff only lints + formats. Without
+          -- this you'd get duplicate hover popups from two servers on the same buffer.
           client.server_capabilities.hoverProvider = false
+
+          -- Sort imports (isort) on save. vim.lsp.buf.format() in init.lua only
+          -- runs ruff's *formatter*; import sorting is a separate ruff code action
+          -- (rule "I" / isort), so format-on-save alone never reorders imports.
+          -- We fire ruff's organizeImports action here, before the write.
+          vim.api.nvim_create_autocmd("BufWritePre", {
+            buffer = bufnr,
+            callback = function()
+              -- Ask ruff only for its organize-imports action on this buffer.
+              -- make_range_params needs the client's offset_encoding in 0.11.
+              local params = vim.lsp.util.make_range_params(0, client.offset_encoding)
+              params.context = { only = { "source.organizeImports.ruff" }, diagnostics = {} }
+
+              -- request_sync BLOCKS so the edits land before the buffer writes
+              -- (an async request would race the save and often miss it).
+              local resp = client.request_sync("textDocument/codeAction", params, 3000, bufnr)
+              for _, r in pairs((resp or {}).result or {}) do
+                -- A code action returns either a ready-made edit or a command
+                -- to run; ruff uses an edit, but handle both to be safe.
+                if r.edit then
+                  vim.lsp.util.apply_workspace_edit(r.edit, client.offset_encoding)
+                elseif r.command then
+                  client.request_sync("workspace/executeCommand", r.command, 3000, bufnr)
+                end
+              end
+            end,
+          })
         end,
       })
 

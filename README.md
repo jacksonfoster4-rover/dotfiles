@@ -18,7 +18,7 @@ Defined in `.sharedrc.append` (sourced in both bash and zsh).
 
 ### Functions
 
-- **`reload_dotfiles`** — pull the latest and re-run the installer (updates nvim config + plugins), then re-source the current shell's rc so new aliases/functions are picked up immediately.
+- **`reload_dotfiles`** — pull the latest and re-run the installer (updates nvim config + plugins, and recompiles treesitter parsers so they stay in sync with the nvim ABI after an upgrade), then re-source the current shell's rc so new aliases/functions are picked up immediately.
 - **`claude_worktree [-a|-d|--delete] [--force] [id]`** (aliased to **`cwt`**) — start a background tmux session (`<prefix>-<id>`, id defaults to `0`) running `claude --worktree`. Because tmux runs on the box, the session survives SSH disconnects. The prefix is `tmux-claude`, or — inside a Codespace — the codespace name with its trailing random segment stripped.
   - `cwt [-a|-d] [id]` — create session `<prefix>-id`; `-a` attach (default), `-d` background.
   - `cwt cd id` — cd into `<prefix>-id`'s worktree dir (id required, must exist).
