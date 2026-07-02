@@ -43,8 +43,15 @@ alias staging="k9s --context staging-a"
 #   claude_worktree cd 2         cd into <prefix>-2's worktree dir (must exist)
 # -a is the default when no flag is given.
 claude_worktree() {
+  # Session-name prefix. Default "tmux-claude", but inside a Codespace use the
+  # codespace name with its trailing random segment stripped. "${VAR%-*}" is a
+  # shell parameter expansion: it removes the shortest match of "-*" from the
+  # end, i.e. everything after (and including) the last "-".
   local prefix="tmux-claude"
   [[ -n "$CODESPACE_NAME" ]] && prefix="${CODESPACE_NAME%-*}"
+
+  # `cwt -h` / `--help`: print usage and stop. The heredoc (<<EOF) prints every
+  # line verbatim up to the closing EOF; \` escapes the backtick so it's literal.
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat <<EOF
 claude_worktree (alias: cwt) — manage tmux sessions running \`claude --worktree\`.
@@ -53,19 +60,36 @@ Session name is "$prefix-<ID>" (ID defaults to 0).
 Usage:
   cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
   cwt cd [ID]                  cd into <prefix>-ID's worktree dir (must exist)
+  cwt cd -                     cd back to the main worktree
   cwt --delete [--force] ID    kill <prefix>-ID and prune its worktree (ID required)
   cwt -h|--help                show this help
 EOF
     return 0
   fi
+
+  # `cwt cd [ID]` / `cwt cd -`: change directory instead of managing sessions.
   if [[ "$1" == "cd" ]]; then
-    shift
+    shift  # drop the "cd" word so $1 is now the ID (or "-")
+    # --show-toplevel = the root of the worktree we're currently in. Empty (and
+    # 2>/dev/null hides the error) when we're not inside a git repo at all.
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
     if [[ -z "$root" ]]; then
       echo "claude_worktree cd must be run inside a git repo" >&2
       return 1
     fi
+    # `cwt cd -`: jump back to the MAIN worktree (e.g. /workspaces/web), not one
+    # of the .claude/worktrees/* copies. `git worktree list --porcelain` always
+    # lists the main worktree first; awk grabs the path from that first
+    # "worktree <path>" line and exits immediately.
+    if [[ "$1" == "-" ]]; then
+      local main
+      main="$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
+      cd "$main"
+      return
+    fi
+    # Otherwise cd into a specific session's worktree. "${1:-0}" means "use $1,
+    # or 0 if $1 is empty" — so bare `cwt cd` targets session 0.
     local dir="$root/.claude/worktrees/$prefix-${1:-0}"
     if [[ ! -d "$dir" ]]; then
       echo "no worktree at $dir" >&2
