@@ -27,6 +27,18 @@ Shell helpers live in `.sharedrc.append` (sourced in both bash and zsh). Keep `.
 
 Inline comments in `.sharedrc.append` are reserved for non-obvious *logic* inside functions (shell parameter expansions like `${1:-0}` / `${VAR%-*}`, `git` plumbing flags, clever one-liners) — the repo owner is not a config expert, so explain those where they appear. Plain aliases get documented in the README instead.
 
+#### `claude_worktree` is mirrored to a public gist
+
+The `claude_worktree` function (alias `cwt`) is shared with teammates via a public GitHub gist: https://gist.github.com/jacksonfoster4-rover/a284d137c51304fdc4e1e255bb65ed34
+
+**Whenever you change the `claude_worktree` function in `.sharedrc.append`, update the gist too** so teammates who `curl` it get the new version. Update it with `gh`:
+
+```sh
+gh gist edit a284d137c51304fdc4e1e255bb65ed34 -a claude_worktree.sh <file>
+```
+
+where `<file>` is the standalone copy — the `claude_worktree` block (the comment header through the `alias cwt=...` line) extracted from `.sharedrc.append`. This requires the user's approval for the public upload; ask before running it.
+
 ### Neovim inline comments
 
 The repo owner is not a config expert. Any Neovim config you add or change must be commented so a non-expert can follow it: explain the why, not just the what, and gloss non-obvious Lua/vimscript idioms. Match the surrounding comment density (the existing files comment heavily).

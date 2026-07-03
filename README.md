@@ -19,10 +19,12 @@ Defined in `.sharedrc.append` (sourced in both bash and zsh).
 ### Functions
 
 - **`reload_dotfiles`** — pull the latest and re-run the installer (updates nvim config + plugins, and recompiles treesitter parsers so they stay in sync with the nvim ABI after an upgrade), then re-source the current shell's rc so new aliases/functions are picked up immediately.
-- **`claude_worktree [-a|-d|--delete] [--force] [id]`** (aliased to **`cwt`**) — start a background tmux session (`<prefix>-<id>`, id defaults to `0`) running `claude --worktree`. Because tmux runs on the box, the session survives SSH disconnects. The prefix is `tmux-claude`, or — inside a Codespace — the codespace name with its trailing random segment stripped.
+- **`claude_worktree [-a|-d|-b|--base|--delete] [--force] [id]`** (aliased to **`cwt`**) — start a background tmux session (`<prefix>-<id>`, id defaults to `0`) running `claude --worktree`. Because tmux runs on the box, the session survives SSH disconnects. The prefix is `tmux-claude`, or — inside a Codespace — the codespace name with its trailing random segment stripped.
   - `cwt [-a|-d] [id]` — create session `<prefix>-id`; `-a` attach (default), `-d` background.
+  - `cwt -b|--base [id]` — attach a session to `<prefix>-id`'s **existing** worktree instead of creating one; errors if that worktree doesn't exist. (`claude --worktree` reuses a worktree of that name, so the existing one is picked up as-is.)
   - `cwt cd id` — cd into `<prefix>-id`'s worktree dir (id required, must exist).
   - `cwt cd -` — cd back to the main worktree.
+  - `cwt ls` — list this prefix's sessions/worktrees as a table (`ID`, `SESSION` live/`-`, `WORKTREE` path/`-`), merging live tmux sessions and on-disk worktrees.
   - `cwt --delete [--force] id` — kill `<prefix>-id` and prune its worktree (`--force` discards uncommitted changes; id required).
   - `cwt -h` / `--help` — show usage.
 

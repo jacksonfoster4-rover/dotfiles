@@ -42,6 +42,7 @@ alias staging="k9s --context staging-a"
 # predictable path (.claude/worktrees/<name>) and can be pruned on delete.
 #   claude_worktree -d 2         create <prefix>-2 in the background, don't attach
 #   claude_worktree -a 2         create if needed, then attach to <prefix>-2
+#   claude_worktree -b 2         attach a session to <prefix>-2's EXISTING worktree (don't create)
 #   claude_worktree --delete 2   kill <prefix>-2 and prune its worktree (ID required)
 #   claude_worktree --delete --force 2   also discard the worktree's uncommitted changes
 #   claude_worktree cd 2         cd into <prefix>-2's worktree dir (must exist)
@@ -63,8 +64,10 @@ Session name is "$prefix-<ID>" (ID defaults to 0).
 
 Usage:
   cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
+  cwt -b|--base [ID]           attach a session to <prefix>-ID's EXISTING worktree (errors if none)
   cwt cd ID                    cd into <prefix>-ID's worktree dir (ID required, must exist)
   cwt cd -                     cd back to the main worktree
+  cwt ls                       list this prefix's sessions/worktrees and their state
   cwt --delete [--force] ID    kill <prefix>-ID and prune its worktree (ID required)
   cwt -h|--help                show this help
 EOF
@@ -106,9 +109,46 @@ EOF
     cd "$dir"
     return
   fi
+
+  # `cwt ls`: show every entry for this prefix and its state. An entry can be a
+  # live tmux session, an on-disk worktree, or both, so we gather IDs from both
+  # sources and merge them.
+  if [[ "$1" == "ls" ]]; then
+    local root
+    root="$(git rev-parse --show-toplevel 2>/dev/null)"
+    # Two ID sources, one per line:
+    #   1. live tmux sessions named "<prefix>-*" (grep the session list)
+    #   2. worktree dirs at .claude/worktrees/<prefix>-* (find, so an unmatched
+    #      glob can't error out — zsh errors on a literal no-match glob, bash
+    #      leaves it literal; find sidesteps both)
+    # basename gives us "<prefix>-<id>"; sed strips the "<prefix>-" so we're left
+    # with bare IDs, then sort -u de-dupes the union and drops blank lines.
+    local ids
+    ids="$(
+      tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^$prefix-"
+      [[ -n "$root" ]] && find "$root/.claude/worktrees" -mindepth 1 -maxdepth 1 -type d -name "$prefix-*" -exec basename {} \; 2>/dev/null
+    )"
+    ids="$(printf '%s\n' "$ids" | sed "s/^$prefix-//" | sort -u | sed '/^$/d')"
+    if [[ -z "$ids" ]]; then
+      echo "no $prefix sessions or worktrees"
+      return 0
+    fi
+    printf '%-14s  %-7s  %s\n' ID SESSION WORKTREE
+    local id
+    # <<< is a here-string (bash + zsh): feed $ids to the loop on stdin. Looping
+    # over a pipeline instead would run the body in a subshell in bash.
+    while IFS= read -r id; do
+      [[ -z "$id" ]] && continue
+      local sess="-" wt="-"
+      tmux has-session -t "$prefix-$id" 2>/dev/null && sess="live"
+      [[ -n "$root" && -d "$root/.claude/worktrees/$prefix-$id" ]] && wt="$root/.claude/worktrees/$prefix-$id"
+      printf '%-14s  %-7s  %s\n' "$id" "$sess" "$wt"
+    done <<< "$ids"
+    return 0
+  fi
   local mode=-a
   case "$1" in
-    -a|-d|--delete) mode="$1"; shift ;;
+    -a|-d|-b|--base|--delete) mode="$1"; shift ;;
   esac
   if [[ "$mode" == "--delete" ]]; then
     local force="" id=""
@@ -130,8 +170,23 @@ EOF
     return
   fi
   local name="$prefix-${1:-0}"
+  # -b/--base: attach a session to an EXISTING worktree instead of creating a
+  # new one. The whole point of -b is "don't create", so bail if the worktree
+  # dir isn't there rather than silently making one. Once we know it exists we
+  # launch it the same way as a normal create — `claude --worktree <name>`
+  # reuses an existing worktree of that name, it doesn't error or duplicate.
+  if [[ "$mode" == "-b" || "$mode" == "--base" ]]; then
+    local root
+    root="$(git rev-parse --show-toplevel 2>/dev/null)"
+    local dir="$root/.claude/worktrees/$name"
+    if [[ -z "$root" || ! -d "$dir" ]]; then
+      echo "no existing worktree at $dir (create one with 'cwt ${1:-0}')" >&2
+      return 1
+    fi
+  fi
   tmux has-session -t "$name" 2>/dev/null ||
     tmux new-session -d -s "$name" "claude --worktree $name -n $name"
-  [[ "$mode" == "-a" ]] && tmux attach-session -t "$name"
+  # Attach for the interactive modes (-a default and -b); only -d stays detached.
+  [[ "$mode" != "-d" ]] && tmux attach-session -t "$name"
 }
 alias cwt="claude_worktree"
