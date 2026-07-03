@@ -139,9 +139,24 @@ EOF
     # over a pipeline instead would run the body in a subshell in bash.
     while IFS= read -r id; do
       [[ -z "$id" ]] && continue
-      local sess="-" wt="-"
-      tmux has-session -t "$prefix-$id" 2>/dev/null && sess="live"
-      [[ -n "$root" && -d "$root/.claude/worktrees/$prefix-$id" ]] && wt="$root/.claude/worktrees/$prefix-$id"
+      local sess="-" wt=""
+      # For a live session, don't derive the worktree from the id — just ask
+      # tmux where the session's pane actually is. That's correct for both a
+      # normal session and a -b session (which runs in another id's worktree, so
+      # id-derivation would give the wrong path or nothing).
+      if tmux has-session -t "$prefix-$id" 2>/dev/null; then
+        sess="live"
+        wt="$(tmux display-message -p -t "$prefix-$id" '#{pane_current_path}' 2>/dev/null)"
+      fi
+      # Dead session (an orphan worktree left on disk) or tmux gave us nothing:
+      # fall back to the id-named worktree dir if it exists, else "-".
+      if [[ -z "$wt" ]]; then
+        if [[ -n "$root" && -d "$root/.claude/worktrees/$prefix-$id" ]]; then
+          wt="$root/.claude/worktrees/$prefix-$id"
+        else
+          wt="-"
+        fi
+      fi
       printf '%-14s  %-7s  %s\n' "$id" "$sess" "$wt"
     done <<< "$ids"
     return 0
@@ -176,8 +191,13 @@ EOF
     fi
     local name="$prefix-$id"
     tmux kill-session -t "$name" 2>/dev/null
-    [[ -n "$root" ]] && git worktree remove $force "$root/.claude/worktrees/$name"
-    return
+    # Only prune a worktree if THIS session owns one. A session made with -b
+    # runs inside another session's worktree and has none of its own, so its
+    # <prefix>-<id> dir won't exist — skip the remove rather than erroring, and
+    # never touch the base session's worktree.
+    local dir="$root/.claude/worktrees/$name"
+    [[ -n "$root" && -d "$dir" ]] && git worktree remove $force "$dir"
+    return 0  # explicit: don't leak the [[ -d ]] test's exit status when a -b session had no worktree
   fi
 
   # Session name is the positional ID (default 0).
