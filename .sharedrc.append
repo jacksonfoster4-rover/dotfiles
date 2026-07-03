@@ -81,13 +81,19 @@ or inside a Codespace the codespace name. The worktree lands at a predictable
 path (.claude/worktrees/<session>) so it can be reused and pruned by ID.
 
 Usage:
-  cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
+  cwt [-a|-d] [ID]              create OR reattach to session <prefix>-ID; -a attach (default), -d background
   cwt [-a|-d] ID -b BASE_ID    session <prefix>-ID, but run claude inside EXISTING worktree <prefix>-BASE_ID
   cwt cd ID                    cd into <prefix>-ID's worktree dir (ID required, must exist)
   cwt cd -                     cd back to the main worktree
   cwt ls                       list this prefix's sessions/worktrees and their state
   cwt --delete [--force] ID    kill <prefix>-ID and prune its worktree (ID required)
   cwt -h|--help                show this help
+
+Reconnecting:
+  A session keeps running even after you disconnect (SSH drop, closed terminal,
+  or detaching with tmux's Ctrl-b d). To hop back in, just re-run the same
+  \`cwt [ID]\` — if the session already exists it reattaches instead of creating
+  a new one. \`cwt ls\` shows which sessions are live if you forget the ID.
 EOF
     return 0
   fi
@@ -210,7 +216,7 @@ EOF
       git worktree remove $force "$dir"
       return
     fi
-    echo "No worktree found for session $id — killed the tmux session only." >&2
+    echo "No worktree found for session \"$name\" — killed the tmux session only." >&2
     return 0
   fi
 
