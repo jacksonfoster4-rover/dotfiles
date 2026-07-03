@@ -70,7 +70,15 @@ claude_worktree() {
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat <<EOF
 claude_worktree (alias: cwt) — manage tmux sessions running \`claude --worktree\`.
-Session name is "$prefix-<ID>" (ID defaults to 0).
+
+Each session runs Claude in its own git worktree, so several Claudes can work
+on the same repo in parallel without stepping on each other's files. Because
+the tmux session lives on the box, it survives SSH disconnects — just re-run
+the same command to reattach and land back in the running Claude session.
+
+Session name is "$prefix-<ID>" (ID defaults to 0); the prefix is "tmux-claude",
+or inside a Codespace the codespace name. The worktree lands at a predictable
+path (.claude/worktrees/<session>) so it can be reused and pruned by ID.
 
 Usage:
   cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
