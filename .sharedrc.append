@@ -191,13 +191,19 @@ EOF
     fi
     local name="$prefix-$id"
     tmux kill-session -t "$name" 2>/dev/null
-    # Only prune a worktree if THIS session owns one. A session made with -b
-    # runs inside another session's worktree and has none of its own, so its
-    # <prefix>-<id> dir won't exist — skip the remove rather than erroring, and
-    # never touch the base session's worktree.
+    # Prune this session's own worktree. It may not exist — a -b session runs
+    # inside another session's worktree and has none of its own, so there's
+    # nothing at <prefix>-<id> to remove. Say so and return cleanly instead of
+    # letting `git worktree remove` fail on the missing path. When it does
+    # exist, let git's own exit status through (e.g. a dirty worktree without
+    # --force surfaces git's "use --force" message).
     local dir="$root/.claude/worktrees/$name"
-    [[ -n "$root" && -d "$dir" ]] && git worktree remove $force "$dir"
-    return 0  # explicit: don't leak the [[ -d ]] test's exit status when a -b session had no worktree
+    if [[ -n "$root" && -d "$dir" ]]; then
+      git worktree remove $force "$dir"
+      return
+    fi
+    echo "No worktree found for session $id — killed the tmux session only." >&2
+    return 0
   fi
 
   # Session name is the positional ID (default 0).
