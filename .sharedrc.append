@@ -42,7 +42,7 @@ alias staging="k9s --context staging-a"
 # predictable path (.claude/worktrees/<name>) and can be pruned on delete.
 #   claude_worktree -d 2         create <prefix>-2 in the background, don't attach
 #   claude_worktree -a 2         create if needed, then attach to <prefix>-2
-#   claude_worktree -b 2         attach a session to <prefix>-2's EXISTING worktree (don't create)
+#   claude_worktree -d 2 -b 1    background session <prefix>-2, but run claude inside EXISTING worktree <prefix>-1
 #   claude_worktree --delete 2   kill <prefix>-2 and prune its worktree (ID required)
 #   claude_worktree --delete --force 2   also discard the worktree's uncommitted changes
 #   claude_worktree cd 2         cd into <prefix>-2's worktree dir (must exist)
@@ -64,7 +64,7 @@ Session name is "$prefix-<ID>" (ID defaults to 0).
 
 Usage:
   cwt [-a|-d] [ID]              create session <prefix>-ID; -a attach (default), -d background
-  cwt -b|--base [ID]           attach a session to <prefix>-ID's EXISTING worktree (errors if none)
+  cwt [-a|-d] ID -b BASE_ID    session <prefix>-ID, but run claude inside EXISTING worktree <prefix>-BASE_ID
   cwt cd ID                    cd into <prefix>-ID's worktree dir (ID required, must exist)
   cwt cd -                     cd back to the main worktree
   cwt ls                       list this prefix's sessions/worktrees and their state
@@ -146,18 +146,30 @@ EOF
     done <<< "$ids"
     return 0
   fi
-  local mode=-a
-  case "$1" in
-    -a|-d|-b|--base|--delete) mode="$1"; shift ;;
-  esac
+  # Parse the remaining args. Modes: -a (attach, default) / -d (detached) /
+  # --delete. -b/--base <ID> is an OPTION, not a mode: it names an EXISTING
+  # worktree to run claude inside, while the positional ID names the tmux
+  # session. So `cwt -d 2 -b 1` makes detached session <prefix>-2 running claude
+  # inside worktree <prefix>-1. Flags and the positional ID may come in any
+  # order, so we loop instead of matching fixed positions.
+  local mode=-a base="" force="" id=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -a|-d) mode="$1"; shift ;;
+      --delete) mode=--delete; shift ;;
+      --force) force="--force"; shift ;;  # only meaningful with --delete
+      -b|--base)
+        base="$2"  # the NEXT arg is the base worktree ID
+        if [[ -z "$base" ]]; then
+          echo "claude_worktree -b/--base requires a worktree ID" >&2
+          return 1
+        fi
+        shift 2 ;;
+      *) id="$1"; shift ;;  # bare arg = the session ID
+    esac
+  done
+
   if [[ "$mode" == "--delete" ]]; then
-    local force="" id=""
-    for arg in "$@"; do
-      case "$arg" in
-        --force) force="--force" ;;
-        *) id="$arg" ;;
-      esac
-    done
     if [[ -z "$id" ]]; then
       echo "claude_worktree --delete requires a session ID" >&2
       return 1
@@ -169,24 +181,34 @@ EOF
     [[ -n "$root" ]] && git worktree remove $force "$root/.claude/worktrees/$name"
     return
   fi
-  local name="$prefix-${1:-0}"
-  # -b/--base: attach a session to an EXISTING worktree instead of creating a
-  # new one. The whole point of -b is "don't create", so bail if the worktree
-  # dir isn't there rather than silently making one. Once we know it exists we
-  # launch it the same way as a normal create — `claude --worktree <name>`
-  # reuses an existing worktree of that name, it doesn't error or duplicate.
-  if [[ "$mode" == "-b" || "$mode" == "--base" ]]; then
+
+  # Session name is the positional ID (default 0).
+  local name="$prefix-${id:-0}"
+
+  if [[ -n "$base" ]]; then
+    # -b/--base: run claude inside an EXISTING worktree (<prefix>-<base>) while
+    # the tmux session keeps its own name. Because the worktree name differs
+    # from the session name we can't use `claude --worktree <name>` (that would
+    # target a worktree named after the SESSION); instead we start the tmux
+    # session with its working directory set to the base worktree (tmux's -c)
+    # and run plain claude there. Bail if that worktree doesn't already exist —
+    # -b never creates one.
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
-    local dir="$root/.claude/worktrees/$name"
+    local dir="$root/.claude/worktrees/$prefix-$base"
     if [[ -z "$root" || ! -d "$dir" ]]; then
-      echo "no existing worktree at $dir (create one with 'cwt ${1:-0}')" >&2
+      echo "no existing worktree at $dir (create one with 'cwt $base')" >&2
       return 1
     fi
+    tmux has-session -t "$name" 2>/dev/null ||
+      tmux new-session -d -s "$name" -c "$dir" "claude -n $name"
+  else
+    # Normal create: claude --worktree makes (or reuses) a worktree named after
+    # the session.
+    tmux has-session -t "$name" 2>/dev/null ||
+      tmux new-session -d -s "$name" "claude --worktree $name -n $name"
   fi
-  tmux has-session -t "$name" 2>/dev/null ||
-    tmux new-session -d -s "$name" "claude --worktree $name -n $name"
-  # Attach for the interactive modes (-a default and -b); only -d stays detached.
-  [[ "$mode" != "-d" ]] && tmux attach-session -t "$name"
+  # Attach for -a (the default); -d leaves it running in the background.
+  [[ "$mode" == "-a" ]] && tmux attach-session -t "$name"
 }
 alias cwt="claude_worktree"
