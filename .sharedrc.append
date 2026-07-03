@@ -55,6 +55,16 @@ claude_worktree() {
   local prefix="tmux-claude"
   [[ -n "$CODESPACE_NAME" ]] && prefix="${CODESPACE_NAME%-*}"
 
+  # The MAIN worktree root — where all the .claude/worktrees/* copies live.
+  # NOT `git rev-parse --show-toplevel`: that returns whichever worktree you're
+  # standing in, so running cwt from inside a linked worktree would point every
+  # lookup below at the wrong place (its .claude/worktrees is empty). `git
+  # worktree list --porcelain` returns the same set from anywhere in the repo
+  # and always prints the main worktree first; awk grabs that first path and
+  # exits. Empty (harmless) when we're not inside a git repo at all.
+  local root
+  root="$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')"
+
   # `cwt -h` / `--help`: print usage and stop. The heredoc (<<EOF) prints every
   # line verbatim up to the closing EOF; \` escapes the backtick so it's literal.
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
@@ -77,22 +87,14 @@ EOF
   # `cwt cd [ID]` / `cwt cd -`: change directory instead of managing sessions.
   if [[ "$1" == "cd" ]]; then
     shift  # drop the "cd" word so $1 is now the ID (or "-")
-    # --show-toplevel = the root of the worktree we're currently in. Empty (and
-    # 2>/dev/null hides the error) when we're not inside a git repo at all.
-    local root
-    root="$(git rev-parse --show-toplevel 2>/dev/null)"
     if [[ -z "$root" ]]; then
       echo "claude_worktree cd must be run inside a git repo" >&2
       return 1
     fi
     # `cwt cd -`: jump back to the MAIN worktree (e.g. /workspaces/web), not one
-    # of the .claude/worktrees/* copies. `git worktree list --porcelain` always
-    # lists the main worktree first; awk grabs the path from that first
-    # "worktree <path>" line and exits immediately.
+    # of the .claude/worktrees/* copies. $root already IS the main worktree.
     if [[ "$1" == "-" ]]; then
-      local main
-      main="$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
-      cd "$main"
+      cd "$root"
       return
     fi
     # Otherwise cd into a specific session's worktree. The ID is required — bare
@@ -114,8 +116,6 @@ EOF
   # live tmux session, an on-disk worktree, or both, so we gather IDs from both
   # sources and merge them.
   if [[ "$1" == "ls" ]]; then
-    local root
-    root="$(git rev-parse --show-toplevel 2>/dev/null)"
     # Two ID sources, one per line:
     #   1. live tmux sessions named "<prefix>-*" (grep the session list)
     #   2. worktree dirs at .claude/worktrees/<prefix>-* (find, so an unmatched
@@ -176,8 +176,6 @@ EOF
     fi
     local name="$prefix-$id"
     tmux kill-session -t "$name" 2>/dev/null
-    local root
-    root="$(git rev-parse --show-toplevel 2>/dev/null)"
     [[ -n "$root" ]] && git worktree remove $force "$root/.claude/worktrees/$name"
     return
   fi
@@ -193,8 +191,6 @@ EOF
     # session with its working directory set to the base worktree (tmux's -c)
     # and run plain claude there. Bail if that worktree doesn't already exist —
     # -b never creates one.
-    local root
-    root="$(git rev-parse --show-toplevel 2>/dev/null)"
     local dir="$root/.claude/worktrees/$prefix-$base"
     if [[ -z "$root" || ! -d "$dir" ]]; then
       echo "no existing worktree at $dir (create one with 'cwt $base')" >&2
