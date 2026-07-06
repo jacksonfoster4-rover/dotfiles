@@ -27,6 +27,20 @@ function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs ki
 # forwards on repeat calls. `fwp -d [port]` kills the session; `fwp ls` lists
 # the live forward sessions.
 forward_port() {
+  # -h/--help: usage.
+  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    cat <<'EOF'
+forward_port (aliased fwp) — forward a Codespaces port in a persistent tmux session.
+
+Usage:
+  fwp [port]       Forward <port> (default 8001) and attach; reuses an existing session.
+  fwp -d [port]    Kill the forward session for <port> (default 8001).
+  fwp ls           List live forward sessions.
+  fwp -h|--help    Show this help.
+EOF
+    return
+  fi
+
   # ls: list live forward sessions (session name fwp-<port> -> "port <port>").
   if [[ "$1" == "ls" ]]; then
     local names
