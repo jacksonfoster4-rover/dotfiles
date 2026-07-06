@@ -5,16 +5,12 @@
 # brew shellenv runs in ~/.zprofile (login shells) — no need to repeat here
 alias upload_ssh="gh codespace cp -e ~/.ssh/id_rsa ~/.ssh/id_rsa.pub remote:.ssh"
 alias upload_aws="gh cs cp -e ~/.aws/credentials 'remote:~/.aws/credentials'"
-alias ios_deeplink="xcrun simctl openurl booted"
 alias ssh_codespace="gh cs ssh --server-port 2222"
 alias local_setup="~/projects/web/dev-env/local-setup/dist/local-setup.sh"
 alias reload_nvim="rm -rf ~/.local/share/nvim && rm -rf ~/.config/nvim/ && cp -r ~/projects/dotfiles/nvim ~/.config"
 alias create_codespace="gh cs create -R roverdotcom/web -m premiumLinux"
 alias fetch_ios="rover-cli mobile fetch ios"
 alias change_host="rover-cli m change-api-host"
-# Start claude (detached tmux) in a codespace so you can drive it from your phone. gh prompts for the codespace.
-alias cs_claude="gh codespace ssh -- \"tmux new-session -d -s claude 'bash -lc claude' 2>/dev/null; tmux capture-pane -t claude -p | tail -30\""
-alias cs_claude_kill="gh codespace ssh -- 'tmux kill-session -t claude'"
 
 function browse {
   local port=${1-8001}
