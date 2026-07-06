@@ -22,18 +22,51 @@ function browse {
 
 function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs kill -9 }
 
-# Forward a Codespaces port inside a persistent tmux session, so the forward
-# survives SSH disconnects. Reuses an existing session instead of stacking
-# forwards on repeat calls. `fwp -d [port]` kills the session; `fwp ls` lists
-# the live forward sessions.
+# Pick a Codespace interactively and echo its name. Runs OUTSIDE tmux so the
+# selection prompt shows in the current terminal; the chosen name is then passed
+# to `gh cs ports forward -c` inside the detached tmux session (a prompt inside a
+# background tmux session would be invisible and hang the forward). Auto-selects
+# when there's only one codespace; uses fzf if present, else a numbered menu.
+_fwp_pick_codespace() {
+  local -a names
+  names=("${(@f)$(gh codespace list --json name --jq '.[].name' 2>/dev/null)}")
+  names=(${names:#})  # drop empty entries from the command substitution
+  if (( ${#names} == 0 )); then
+    echo "No codespaces found" >&2
+    return 1
+  fi
+  if (( ${#names} == 1 )); then
+    echo "${names[1]}"
+    return 0
+  fi
+  if command -v fzf >/dev/null 2>&1; then
+    printf '%s\n' "${names[@]}" | fzf --prompt='codespace> '
+  else
+    # `select` writes its menu/prompt to stderr, so only the chosen name (echoed
+    # to stdout) is captured by the caller's command substitution.
+    local cs
+    select cs in "${names[@]}"; do
+      [[ -n "$cs" ]] && { echo "$cs"; break; }
+    done
+  fi
+}
+
+# Forward a Codespaces port inside a persistent, backgrounded tmux session, so
+# the forward survives SSH disconnects. Reuses an existing session instead of
+# stacking forwards on repeat calls. `fwp -d [port]` kills the session;
+# `fwp ls` lists the live forward sessions; `fwp -a [port]` attaches.
 forward_port() {
   # -h/--help: usage.
   if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat <<'EOF'
 forward_port (aliased fwp) — forward a Codespaces port in a persistent tmux session.
 
+The session runs in the background; the codespace picker runs in your current
+terminal (not inside tmux).
+
 Usage:
-  fwp [port]       Forward <port> (default 8001) and attach; reuses an existing session.
+  fwp [port]       Forward <port> (default 8001) in the background.
+  fwp -a [port]    Same, then attach to the tmux session.
   fwp -d [port]    Kill the forward session for <port> (default 8001).
   fwp ls           List live forward sessions.
   fwp -h|--help    Show this help.
@@ -62,13 +95,28 @@ EOF
     return
   fi
 
-  local port=${1:-8001}
+  # Remaining args: optional -a (attach) flag and a positional port.
+  local attach=false port
+  while (( $# )); do
+    case "$1" in
+      -a) attach=true ;;
+      *) port=$1 ;;
+    esac
+    shift
+  done
+  port=${port:-8001}
+
   local session="fwp-$port"
   if ! tmux has-session -t "$session" 2>/dev/null; then
+    # Resolve the codespace here, before tmux, so its picker is interactive.
+    local cs
+    cs=$(_fwp_pick_codespace) || return 1
+    [[ -z "$cs" ]] && { echo "No codespace selected" >&2; return 1; }
     tmux new-session -d -s "$session"
-    tmux send-keys -t "$session" "gh cs ports forward $port:$port" Enter
+    tmux send-keys -t "$session" "gh cs ports forward -c $cs $port:$port" Enter
+    echo "Forwarding port $port in background (codespace: $cs). Attach: fwp -a $port"
   fi
-  tmux attach-session -t "$session"
+  [[ "$attach" == true ]] && tmux attach-session -t "$session"
 }
 alias fwp="forward_port"
 
