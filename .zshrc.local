@@ -4,7 +4,6 @@
 
 # brew shellenv runs in ~/.zprofile (login shells) — no need to repeat here
 alias upload_ssh="gh codespace cp -e ~/.ssh/id_rsa ~/.ssh/id_rsa.pub remote:.ssh"
-alias upload_aws="gh cs cp -e ~/.aws/credentials 'remote:~/.aws/credentials'"
 alias ssh_codespace="gh cs ssh --server-port 2222"
 alias local_setup="~/projects/web/dev-env/local-setup/dist/local-setup.sh"
 alias reload_nvim="rm -rf ~/.local/share/nvim && rm -rf ~/.config/nvim/ && cp -r ~/projects/dotfiles/nvim ~/.config"
