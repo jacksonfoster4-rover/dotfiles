@@ -29,25 +29,39 @@ function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs ki
 
 # Forward a Codespaces port inside a persistent tmux session, so the forward
 # survives SSH disconnects. Reuses an existing session instead of stacking
-# forwards on repeat calls. `forward_port -d [port]` kills the session instead.
+# forwards on repeat calls. `fwp -d [port]` kills the session; `fwp ls` lists
+# the live forward sessions.
 forward_port() {
+  # ls: list live forward sessions (session name fwp-<port> -> "port <port>").
+  if [[ "$1" == "ls" ]]; then
+    local names
+    names=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^fwp-')
+    if [[ -z "$names" ]]; then
+      echo "No forward sessions"
+    else
+      echo "$names" | sed 's/^fwp-/port /'
+    fi
+    return
+  fi
+
   # -d: tear down the forward session for [port] and exit.
   if [[ "$1" == "-d" ]]; then
     local port=${2:-8001}
-    tmux kill-session -t "fwd-$port" 2>/dev/null &&
+    tmux kill-session -t "fwp-$port" 2>/dev/null &&
       echo "Killed forward session for port $port" ||
       echo "No forward session for port $port"
     return
   fi
 
   local port=${1:-8001}
-  local session="fwd-$port"
+  local session="fwp-$port"
   if ! tmux has-session -t "$session" 2>/dev/null; then
     tmux new-session -d -s "$session"
     tmux send-keys -t "$session" "gh cs ports forward $port:$port" Enter
   fi
   tmux attach-session -t "$session"
 }
+alias fwp="forward_port"
 
 rover_cli() {
   if command -v rover-cli >/dev/null 2>&1; then
