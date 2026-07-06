@@ -27,7 +27,9 @@ function browse {
 
 function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs kill -9 }
 
-function forward_port {
+# Raw Codespaces port forward (no tmux). Internal helper run inside the tmux
+# session by forward_port below; call it directly if you want the plain forward.
+_forward_port() {
   local port=${1-8001}
   gh cs ports forward $port:$port
 }
@@ -35,21 +37,19 @@ function forward_port {
 # Forward a Codespaces port inside a persistent tmux session, so the forward
 # survives SSH disconnects. Reuses an existing session instead of stacking
 # forwards on repeat calls.
-forward_port_session() {
+forward_port() {
   local port=${1:-8001}
   local session="fwd-$port"
   if ! tmux has-session -t "$session" 2>/dev/null; then
     tmux new-session -d -s "$session"
     # send-keys runs the command in the pane's interactive shell, which sources
-    # ~/.zshrc (-> this file) where forward_port is defined. Passing
-    # "forward_port $port" straight to `tmux new-session` would exec it in a
-    # bare non-interactive shell where the function doesn't exist, and the
-    # session would die at once.
-    tmux send-keys -t "$session" "forward_port $port" Enter
+    # ~/.zshrc (-> this file) where _forward_port is defined. Passing it
+    # straight to `tmux new-session` would exec it in a bare non-interactive
+    # shell where the function doesn't exist, and the session would die at once.
+    tmux send-keys -t "$session" "_forward_port $port" Enter
   fi
   tmux attach-session -t "$session"
 }
-alias fwd="forward_port_session"
 
 rover_cli() {
   if command -v rover-cli >/dev/null 2>&1; then
