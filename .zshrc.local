@@ -1,0 +1,61 @@
+# Laptop-local zsh config, git-tracked in dotfiles. Sourced from ~/.zshrc.
+# Holds machine-specific aliases and helpers that don't belong in the shared,
+# cross-machine .sharedrc.append.
+
+# brew shellenv runs in ~/.zprofile (login shells) — no need to repeat here
+alias upload_ssh="gh codespace cp -e ~/.ssh/id_rsa ~/.ssh/id_rsa.pub remote:.ssh"
+alias upload_aws="gh cs cp -e ~/.aws/credentials 'remote:~/.aws/credentials'"
+alias ios_deeplink="xcrun simctl openurl booted"
+alias ssh_codespace="gh cs ssh --server-port 2222"
+alias local_setup="~/projects/web/dev-env/local-setup/dist/local-setup.sh"
+alias reload_nvim="rm -rf ~/.local/share/nvim && rm -rf ~/.config/nvim/ && cp -r ~/projects/dotfiles/nvim ~/.config"
+alias create_codespace="gh cs create -R roverdotcom/web -m premiumLinux"
+alias fetch_ios="rover-cli mobile fetch ios"
+alias change_host="rover-cli m change-api-host"
+# Start claude (detached tmux) in a codespace so you can drive it from your phone. gh prompts for the codespace.
+alias cs_claude="gh codespace ssh -- \"tmux new-session -d -s claude 'bash -lc claude' 2>/dev/null; tmux capture-pane -t claude -p | tail -30\""
+alias cs_claude_kill="gh codespace ssh -- 'tmux kill-session -t claude'"
+
+function browse {
+  local port=${1-8001}
+  local visibility=${2-false}
+
+  local domain="rover.local"
+
+  open "http://${domain}:$port/"
+}
+
+function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs kill -9 }
+
+function forward_port {
+  local port=${1-8001}
+  gh cs ports forward $port:$port
+}
+
+# Forward a Codespaces port inside a persistent tmux session, so the forward
+# survives SSH disconnects. Reuses an existing session instead of stacking
+# forwards on repeat calls.
+forward_port_session() {
+  local port=${1:-8001}
+  local session="fwd-$port"
+  if ! tmux has-session -t "$session" 2>/dev/null; then
+    tmux new-session -d -s "$session"
+    # send-keys runs the command in the pane's interactive shell, which sources
+    # ~/.zshrc (-> this file) where forward_port is defined. Passing
+    # "forward_port $port" straight to `tmux new-session` would exec it in a
+    # bare non-interactive shell where the function doesn't exist, and the
+    # session would die at once.
+    tmux send-keys -t "$session" "forward_port $port" Enter
+  fi
+  tmux attach-session -t "$session"
+}
+alias fwd="forward_port_session"
+
+rover_cli() {
+  if command -v rover-cli >/dev/null 2>&1; then
+    rover-cli "$@"
+  else
+    source ~/projects/web/profile
+    rover-cli "$@"
+  fi
+}
