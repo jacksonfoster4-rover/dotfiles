@@ -29,8 +29,17 @@ function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs ki
 
 # Forward a Codespaces port inside a persistent tmux session, so the forward
 # survives SSH disconnects. Reuses an existing session instead of stacking
-# forwards on repeat calls.
+# forwards on repeat calls. `forward_port -d [port]` kills the session instead.
 forward_port() {
+  # -d: tear down the forward session for [port] and exit.
+  if [[ "$1" == "-d" ]]; then
+    local port=${2:-8001}
+    tmux kill-session -t "fwd-$port" 2>/dev/null &&
+      echo "Killed forward session for port $port" ||
+      echo "No forward session for port $port"
+    return
+  fi
+
   local port=${1:-8001}
   local session="fwd-$port"
   if ! tmux has-session -t "$session" 2>/dev/null; then
