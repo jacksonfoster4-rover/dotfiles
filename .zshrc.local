@@ -67,6 +67,7 @@ terminal (not inside tmux).
 Usage:
   fwp [port]       Forward <port> (default 8001) in the background.
   fwp -a [port]    Same, then attach to the tmux session.
+  fwp -r [port]    Restart: kill the existing session, then start it fresh.
   fwp -d [port]    Kill the forward session for <port> (default 8001).
   fwp ls           List live forward sessions.
   fwp -h|--help    Show this help.
@@ -95,11 +96,12 @@ EOF
     return
   fi
 
-  # Remaining args: optional -a (attach) flag and a positional port.
-  local attach=false port
+  # Remaining args: optional -a (attach) / -r (restart) flags and a positional port.
+  local attach=false restart=false port
   while (( $# )); do
     case "$1" in
       -a) attach=true ;;
+      -r) restart=true ;;
       *) port=$1 ;;
     esac
     shift
@@ -107,6 +109,8 @@ EOF
   port=${port:-8001}
 
   local session="fwp-$port"
+  # -r: kill any existing session first so it's recreated fresh below.
+  [[ "$restart" == true ]] && tmux kill-session -t "$session" 2>/dev/null
   if ! tmux has-session -t "$session" 2>/dev/null; then
     # Resolve the codespace here, before tmux, so its picker is interactive.
     local cs
