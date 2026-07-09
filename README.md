@@ -6,7 +6,8 @@ If you are reading this, welcome. These are my dotfiles intended for Codespaces.
 
 | Path | What |
 |------|------|
-| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring). |
+| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + tmux MCP venv). |
+| `bin/` | Standalone scripts. `tmux-mcp-server.py` — MCP server for remote tmux control (see below). |
 | `nvim/` | Neovim config — `init.lua` + `lua/plugins/*` (lazy.nvim). |
 | `.sharedrc.append` | Aliases + functions sourced in **both** bash and zsh. |
 | `.zshrc.append` / `.bashrc.append` | Shell-specific extras. |
@@ -42,6 +43,36 @@ Defined in `.sharedrc.append` (sourced in both bash and zsh).
 | `staging` | `k9s --context staging-a` | Open k9s (terminal Kubernetes UI) on the `staging-a` cluster. |
 
 `m` and `dc` are project shell wrappers (manage.py and docker-compose respectively), available in the Codespace.
+
+## Remote tmux control (MCP)
+
+Drive the codespace's tmux sessions — including the `claude` sessions `cwt`
+creates — from Claude Code running on the laptop, over an MCP server.
+
+**How it works.** The MCP server (`bin/tmux-mcp-server.py`, FastMCP) runs *on*
+the codespace and is a thin, stateless shim: every tool just shells out to
+`tmux`, so all state stays in the tmux server. Claude Code on the laptop spawns
+it per-connection over `gh codespace ssh` (stdio transport) — no forwarded
+ports, no long-lived daemon, and it reuses GitHub's existing SSH auth. Because
+state lives in tmux, it sees the same `<prefix>-<id>` sessions `cwt` manages,
+and two clients spawning separate server processes stay consistent.
+
+**Setup.**
+
+1. On the codespace, `install.sh` provisions an isolated venv (`~/.tmux-mcp-venv`)
+   with the `mcp` SDK — kept separate so it never fights the monorepo's Python
+   env. This runs on first install; re-runs skip it.
+2. On the laptop, run `tmc` (function `tmux_mcp`, defined in `.zshrc.local`).
+   It picks a codespace interactively and registers the server with Claude Code
+   at user scope, then run `/mcp` inside Claude Code to connect.
+   - `tmc` — pick a codespace and (re)register the MCP server (re-run to
+     re-point at a different codespace).
+   - `tmc -d` — remove the registered MCP server.
+   - `tmc -h` / `--help` — show usage.
+
+**Tools exposed:** `list_sessions`, `new_session` (optionally running `claude`
+or an arbitrary command), `send_keys`, `capture_output` (line-capped so a long
+Claude run can't dump megabytes over SSH), `kill_session`.
 
 ## Updating
 

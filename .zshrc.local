@@ -124,6 +124,65 @@ EOF
 }
 alias fwp="forward_port"
 
+# Register the codespace tmux MCP server with the local Claude Code CLI. Picks a
+# codespace interactively (reusing _fwp_pick_codespace, so the picker shows in
+# this terminal), then wires `claude mcp add` to spawn the server on that
+# codespace over SSH stdio. The server just shells out to tmux, so once
+# connected Claude Code can list/create/drive/read/kill the same sessions `cwt`
+# creates. Registered at user scope so it's available from any project.
+#   tmc              pick a codespace and (re)register the MCP server
+#   tmc -d           remove the registered MCP server
+#   tmc -h|--help    show usage
+tmux_mcp() {
+  local name="codespace-tmux"
+  # Remote paths on the codespace. The venv is provisioned by install.sh; the
+  # server lives in the dotfiles checkout at the persisted-share path. "~"
+  # expands remotely (ssh runs the command through the codespace's shell).
+  local remote_python="~/.tmux-mcp-venv/bin/python"
+  local remote_server="/workspaces/.codespaces/.persistedshare/dotfiles/bin/tmux-mcp-server.py"
+
+  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    cat <<EOF
+tmux_mcp (aliased tmc) — register the codespace tmux MCP server with Claude Code.
+
+Picks a codespace, then registers an MCP server "$name" (user scope) that Claude
+Code spawns on that codespace over \`gh codespace ssh\`. Because state lives in
+tmux, the server sees the same sessions \`cwt\` creates.
+
+Usage:
+  tmc              pick a codespace and (re)register the MCP server
+  tmc -d           remove the registered MCP server
+  tmc -h|--help    show this help
+
+After registering, run /mcp inside Claude Code (or restart it) to connect.
+EOF
+    return 0
+  fi
+
+  # -d: remove the server and stop.
+  if [[ "$1" == "-d" || "$1" == "--delete" ]]; then
+    claude mcp remove "$name" --scope user 2>/dev/null &&
+      echo "Removed MCP server '$name'" ||
+      echo "No MCP server '$name' was registered"
+    return
+  fi
+
+  local cs
+  cs=$(_fwp_pick_codespace) || return 1
+  [[ -z "$cs" ]] && { echo "No codespace selected" >&2; return 1; }
+
+  # Remove any prior registration first so re-running re-points at the chosen
+  # codespace (codespace names change, so a stale command would target a dead box).
+  claude mcp remove "$name" --scope user 2>/dev/null
+  # Everything after `--` is the literal spawn command; gh's own `-- <cmd>`
+  # separates the SSH target from the remote command to run.
+  if claude mcp add "$name" --scope user -- \
+      gh codespace ssh -c "$cs" -- "$remote_python" "$remote_server"; then
+    echo "Registered MCP server '$name' -> codespace $cs. Run /mcp in Claude Code to connect."
+  fi
+}
+alias tmc="tmux_mcp"
+
 rover_cli() {
   if command -v rover-cli >/dev/null 2>&1; then
     rover-cli "$@"
