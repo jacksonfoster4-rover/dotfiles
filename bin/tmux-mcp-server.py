@@ -14,8 +14,10 @@ capture / kill.
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import time
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -25,6 +27,10 @@ mcp = FastMCP("codespace-tmux")
 # Hard cap on captured lines so a long Claude run can't return megabytes back
 # over the SSH pipe (see design doc: "Output size limits").
 MAX_CAPTURE_LINES = 2000
+
+# New sessions start here by default -- the web repo root on the codespace -- so
+# a `claude` started remotely lands in the project, not the SSH login home dir.
+WEB_DIR = "/workspaces/web"
 
 
 class TmuxError(RuntimeError):
@@ -56,6 +62,42 @@ def _session_exists(name: str) -> bool:
         return True
     except TmuxError:
         return False
+
+
+def _session_prefix() -> str:
+    """The session-name prefix, matching `cwt`: inside a Codespace, the codespace
+    name with its trailing random segment stripped (CODESPACE_NAME up to its last
+    "-"); otherwise "tmux-claude". Keeps MCP-created sessions in the same
+    namespace as hand-created cwt ones, so they group together and show in `cwt ls`.
+    """
+    cs = os.environ.get("CODESPACE_NAME")
+    if cs:
+        return cs.rsplit("-", 1)[0]
+    return "tmux-claude"
+
+
+def _wait_for_ui(session: str, timeout: float) -> bool:
+    """Wait until `session`'s pane stops changing, i.e. Claude's TUI finished its
+    initial draw, so keystrokes sent next aren't dropped mid-boot.
+
+    Version-agnostic on purpose: rather than matching specific TUI strings (which
+    change between Claude releases), it waits for two consecutive identical,
+    non-empty captures. A fresh Claude prompt is static until you submit, so it
+    settles quickly; the animated "thinking" spinner only appears afterward.
+    Returns True once stable, False if `timeout` seconds elapse first.
+    """
+    deadline = time.monotonic() + timeout
+    prev = None
+    while time.monotonic() < deadline:
+        try:
+            pane = _tmux("capture-pane", "-t", session, "-p").strip()
+        except TmuxError:
+            return False
+        if pane and pane == prev:
+            return True
+        prev = pane
+        time.sleep(0.6)
+    return False
 
 
 @mcp.tool()
@@ -94,11 +136,18 @@ def list_sessions() -> list[dict]:
 
 
 @mcp.tool()
-def new_session(name: str, command: Optional[str] = None, run_claude: bool = False) -> str:
+def new_session(
+    name: str,
+    command: Optional[str] = None,
+    run_claude: bool = False,
+    cwd: Optional[str] = None,
+) -> str:
     """Create a new detached tmux session named `name`.
 
     - command: shell command the session runs (e.g. "claude --worktree foo -n foo").
     - run_claude: convenience to start plain `claude`; ignored when `command` is set.
+    - cwd: working directory the session starts in (default: the web repo root,
+      /workspaces/web), so a remotely-started `claude` lands in the project.
 
     To reproduce a `cwt` session, pass command="claude --worktree <name> -n <name>".
     Errors if a session with that name already exists.
@@ -106,11 +155,58 @@ def new_session(name: str, command: Optional[str] = None, run_claude: bool = Fal
     if _session_exists(name):
         raise TmuxError(f"session {name!r} already exists")
     run = command if command else ("claude" if run_claude else None)
-    argv = ["new-session", "-d", "-s", name]
+    start_dir = cwd or WEB_DIR
+    argv = ["new-session", "-d", "-s", name, "-c", start_dir]
     if run:
         argv.append(run)
     _tmux(*argv)
-    return f"created session {name!r}" + (f" running: {run}" if run else "")
+    return f"created session {name!r} in {start_dir}" + (f" running: {run}" if run else "")
+
+
+@mcp.tool()
+def start_claude_task(
+    session_id: str,
+    prompt: str,
+    worktree: bool = True,
+    cwd: Optional[str] = None,
+    timeout: float = 40.0,
+) -> str:
+    """Launch a Claude Code session and hand it `prompt` to work on.
+
+    One call for the common orchestration case: create the session, wait for
+    Claude's UI to finish drawing, then type the task in. The prompt is delivered
+    via send-keys (not baked into the launch command) so multi-line ticket text
+    needs no shell quoting.
+
+    - session_id: short id for the task (e.g. a Jira ticket number "14301"). The
+      full session + worktree name is "<prefix>-<session_id>" following the `cwt`
+      convention, so it groups with cwt's sessions and appears in `cwt ls`.
+    - prompt: the task text (e.g. a Jira ticket's title + description + ACs).
+    - worktree: True -> `claude --worktree <name>` so the task gets its own
+      isolated worktree/branch; False -> plain `claude` in `cwd`.
+    - cwd: starting dir (default /workspaces/web).
+    - timeout: seconds to wait for the UI before typing the prompt.
+
+    Errors if that session already exists.
+    """
+    name = f"{_session_prefix()}-{session_id}"
+    if _session_exists(name):
+        raise TmuxError(f"session {name!r} already exists")
+    start_dir = cwd or WEB_DIR
+    # Mirror the `cwt` launch so these sessions match hand-created ones.
+    run = f"claude --worktree {name} -n {name}" if worktree else "claude"
+    _tmux("new-session", "-d", "-s", name, "-c", start_dir, run)
+    ready = _wait_for_ui(name, timeout)
+    _tmux("send-keys", "-t", name, prompt)
+    _tmux("send-keys", "-t", name, "Enter")
+    where = f"worktree {name}" if worktree else start_dir
+    if not ready:
+        return (
+            f"started {name!r} ({where}) and sent the task, but Claude's UI wasn't "
+            f"visibly ready within {timeout:g}s — if the prompt didn't land, "
+            f"capture_output to check and resend with send_keys"
+        )
+    return f"started {name!r} ({where}) and sent the task"
 
 
 @mcp.tool()

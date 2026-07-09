@@ -66,4 +66,18 @@ if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
 
+# Codespace CLAUDE.md guidance — teach every Claude agent on this box the
+# worktree/run rules (only /workspaces/web can run the site + aliases). We APPEND
+# an @import line (a plain markdown comment as the idempotency marker, so it's
+# invisible in the rendered memory) instead of overwriting ~/.claude/CLAUDE.md,
+# which may already hold other content. Because it's an import, edits to the
+# guidance file are picked up without re-running install.sh.
+CLAUDE_MEMORY="$HOME/.claude/CLAUDE.md"
+mkdir -p "$HOME/.claude"
+touch "$CLAUDE_MEMORY"
+if ! grep -qF "<!-- dotfiles:codespace-worktree-guidance -->" "$CLAUDE_MEMORY"; then
+    printf '\n<!-- dotfiles:codespace-worktree-guidance -->\n@%s\n' \
+        "$DOTFILES_ROOT/claude/codespace-worktree.md" >> "$CLAUDE_MEMORY"
+fi
+
 echo "Dotfiles setup complete!"

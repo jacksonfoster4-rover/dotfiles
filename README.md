@@ -6,8 +6,9 @@ If you are reading this, welcome. These are my dotfiles intended for Codespaces.
 
 | Path | What |
 |------|------|
-| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + tmux MCP venv). |
+| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + tmux MCP venv + Claude memory). |
 | `bin/` | Standalone scripts. `tmux-mcp-server.py` — MCP server for remote tmux control (see below). |
+| `claude/` | Claude Code guidance imported into the codespace's `~/.claude/CLAUDE.md`. `codespace-worktree.md` — worktree vs. `/workspaces/web` run rules. |
 | `nvim/` | Neovim config — `init.lua` + `lua/plugins/*` (lazy.nvim). |
 | `.sharedrc.append` | Aliases + functions sourced in **both** bash and zsh. |
 | `.zshrc.append` / `.bashrc.append` | Shell-specific extras. |
@@ -47,15 +48,18 @@ Defined in `.sharedrc.append` (sourced in both bash and zsh).
 ## Remote tmux control (MCP)
 
 Drive the codespace's tmux sessions — including the `claude` sessions `cwt`
-creates — from Claude Code running on the laptop, over an MCP server.
+creates — from a Claude client on the laptop (Claude Code or Claude Desktop),
+over an MCP server. This is what lets you, e.g., open Claude Desktop, have it
+pull a Jira ticket, and tell it to spin up a `claude` session on the codespace
+to implement it — all without touching the terminal or VSCode.
 
 **How it works.** The MCP server (`bin/tmux-mcp-server.py`, FastMCP) runs *on*
 the codespace and is a thin, stateless shim: every tool just shells out to
-`tmux`, so all state stays in the tmux server. Claude Code on the laptop spawns
-it per-connection over `gh codespace ssh` (stdio transport) — no forwarded
-ports, no long-lived daemon, and it reuses GitHub's existing SSH auth. Because
-state lives in tmux, it sees the same `<prefix>-<id>` sessions `cwt` manages,
-and two clients spawning separate server processes stay consistent.
+`tmux`, so all state stays in the tmux server. The laptop client spawns it
+per-connection over `gh codespace ssh` (stdio transport) — no forwarded ports,
+no long-lived daemon, and it reuses GitHub's existing SSH auth. Because state
+lives in tmux, it sees the same `<prefix>-<id>` sessions `cwt` manages, and two
+clients spawning separate server processes stay consistent.
 
 **Setup.**
 
@@ -63,16 +67,31 @@ and two clients spawning separate server processes stay consistent.
    with the `mcp` SDK — kept separate so it never fights the monorepo's Python
    env. This runs on first install; re-runs skip it.
 2. On the laptop, run `tmc` (function `tmux_mcp`, defined in `.zshrc.local`).
-   It picks a codespace interactively and registers the server with Claude Code
-   at user scope, then run `/mcp` inside Claude Code to connect.
-   - `tmc` — pick a codespace and (re)register the MCP server (re-run to
-     re-point at a different codespace).
-   - `tmc -d` — remove the registered MCP server.
+   It picks a codespace interactively and registers the server. If the chosen
+   codespace is stopped, `tmc` starts it and waits until it's reachable first
+   (there's no `gh codespace start` — SSHing in is what boots it), so the first
+   connection isn't stuck waiting on a cold box.
+   - `tmc` — (re)register with the Claude Code CLI (user scope), then run `/mcp`
+     inside Claude Code to connect. Re-run to re-point at a different codespace.
+   - `tmc --desktop` — write the server into Claude Desktop's config (the
+     codespace name is baked in, since Desktop can't run the picker), then
+     restart Claude Desktop to pick it up.
+   - `tmc -d` — remove the Claude Code registration.
    - `tmc -h` / `--help` — show usage.
 
-**Tools exposed:** `list_sessions`, `new_session` (optionally running `claude`
-or an arbitrary command), `send_keys`, `capture_output` (line-capped so a long
-Claude run can't dump megabytes over SSH), `kill_session`.
+**Tools exposed:** `list_sessions`; `new_session` (optionally running `claude`
+or an arbitrary command); `start_claude_task` (one call to create a session,
+wait for Claude's UI, and type in a task — the orchestration primitive for
+"implement this ticket", worktree-isolated by default, named `<prefix>-<id>`
+like `cwt` so it shows up in `cwt ls`); `send_keys`;
+`capture_output` (line-capped so a long Claude run can't dump megabytes over
+SSH); `kill_session`.
+
+**Note on running the code.** Sessions default to running inside their own git
+worktree, which is great for parallel isolation but *cannot run the site or
+project aliases* — only `/workspaces/web` can (see `claude/codespace-worktree.md`,
+imported into the codespace's `~/.claude/CLAUDE.md`). Agents verify via CI or ask
+before running in the shared `/workspaces/web`.
 
 ## Updating
 
