@@ -55,6 +55,24 @@ def _tmux(*args: str) -> str:
     return proc.stdout
 
 
+def _pane_argv(run: str) -> list[str]:
+    """Wrap shell command `run` so tmux launches it in an interactive login shell.
+
+    tmux runs a pane command *directly* (execvp), NOT through the user's shell,
+    so it inherits this MCP server's bare SSH PATH. `claude` lives in
+    ~/.local/bin, which is only added by the login/interactive shell startup
+    files (.zshrc/.bashrc/.zprofile) -- so a naive `new-session -d <name> "claude
+    ..."` can't find `claude`, exits 127 immediately, and the session vanishes
+    the instant it's created. Re-running the command through `$SHELL -l -i -c`
+    reproduces the PATH an ordinary interactive pane gets (the same environment
+    the `cwt` alias resolves in), so `claude` is found. Passing -l/-i/-c as
+    separate argv elements (not the clustered `-lic`) keeps it portable across
+    bash and zsh; `run` is a single argv element so it needs no shell quoting.
+    """
+    shell = os.environ.get("SHELL") or "/bin/bash"
+    return [shell, "-l", "-i", "-c", run]
+
+
 def _session_exists(name: str) -> bool:
     """True if a tmux session named `name` is currently live."""
     try:
@@ -145,11 +163,14 @@ def new_session(
     """Create a new detached tmux session named `name`.
 
     - command: shell command the session runs (e.g. "claude --worktree foo -n foo").
+      Run through a login shell, so PATH-dependent tools like `claude` resolve.
     - run_claude: convenience to start plain `claude`; ignored when `command` is set.
     - cwd: working directory the session starts in (default: the web repo root,
       /workspaces/web), so a remotely-started `claude` lands in the project.
 
     To reproduce a `cwt` session, pass command="claude --worktree <name> -n <name>".
+    But to *launch Claude on a task*, prefer `start_claude_task`: it waits for the
+    UI and types the prompt for you, whereas this tool just starts the process.
     Errors if a session with that name already exists.
     """
     if _session_exists(name):
@@ -158,7 +179,10 @@ def new_session(
     start_dir = cwd or WEB_DIR
     argv = ["new-session", "-d", "-s", name, "-c", start_dir]
     if run:
-        argv.append(run)
+        # Launch via a login shell so `claude` (and any PATH-dependent command)
+        # resolves -- see _pane_argv. A bare command would exit 127 and the
+        # session would die the moment it's created.
+        argv += _pane_argv(run)
     _tmux(*argv)
     return f"created session {name!r} in {start_dir}" + (f" running: {run}" if run else "")
 
@@ -195,7 +219,8 @@ def start_claude_task(
     start_dir = cwd or WEB_DIR
     # Mirror the `cwt` launch so these sessions match hand-created ones.
     run = f"claude --worktree {name} -n {name}" if worktree else "claude"
-    _tmux("new-session", "-d", "-s", name, "-c", start_dir, run)
+    # Launch via a login shell so `claude` is on PATH -- see _pane_argv.
+    _tmux("new-session", "-d", "-s", name, "-c", start_dir, *_pane_argv(run))
     ready = _wait_for_ui(name, timeout)
     _tmux("send-keys", "-t", name, prompt)
     _tmux("send-keys", "-t", name, "Enter")

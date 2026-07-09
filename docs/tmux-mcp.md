@@ -117,3 +117,11 @@ is spelled out in `claude/codespace-worktree.md` (imported into the Codespace's
   registration, but if it sleeps again the next MCP call re-starts it (slow once,
   then fine).
 - **Worktree ≠ runnable.** See above — the most common source of confusion.
+- **Launches go through a login shell.** `claude` lives in `~/.local/bin`, which
+  is only on PATH in an interactive login shell — so `new_session`/`start_claude_task`
+  run their command via `$SHELL -l -i -c`. A raw `tmux new-session <name> "claude …"`
+  would exit 127 and the session would vanish the instant it's created.
+- **Redeploy after editing the server.** The MCP server is baked into a venv on
+  the Codespace; a laptop that edited `bin/tmux-mcp-server.py` still talks to the
+  *old* copy until you re-run `reload_dotfiles` on the box (new tools like
+  `start_claude_task` won't appear before that).
