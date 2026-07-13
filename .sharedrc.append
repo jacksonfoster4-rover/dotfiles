@@ -213,7 +213,18 @@ EOF
     # --force surfaces git's "use --force" message).
     local dir="$root/.claude/worktrees/$name"
     if [[ -n "$root" && -d "$dir" ]]; then
-      git worktree remove $force "$dir"
+      # A running claude LOCKS its worktree (git worktree lock, reason "claude
+      # session <name>"). Killing the tmux session above ends the process, but
+      # the lock file lives on — and `git worktree remove --force` still refuses
+      # a locked tree: git requires --force TWICE to override a lock. So with
+      # --force, unlock first and pass it twice; otherwise `--delete --force`
+      # could never remove the worktree of a session that had been running.
+      if [[ -n "$force" ]]; then
+        git worktree unlock "$dir" 2>/dev/null
+        git worktree remove --force --force "$dir"
+      else
+        git worktree remove "$dir"
+      fi
       return
     fi
     echo "No worktree found for session \"$name\" — killed the tmux session only." >&2
