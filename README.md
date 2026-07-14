@@ -20,7 +20,7 @@ Defined in `.sharedrc.append` (sourced in both bash and zsh).
 
 ### Functions
 
-- **`reload_dotfiles`** — pull the latest and re-run the installer (updates nvim config + plugins, and recompiles treesitter parsers so they stay in sync with the nvim ABI after an upgrade), then re-source the current shell's rc so new aliases/functions are picked up immediately.
+- **`reload_dotfiles [-f|--force]`** — pull the latest and re-run the installer (updates nvim config + plugins, and recompiles treesitter parsers so they stay in sync with the nvim ABI after an upgrade), then re-source the current shell's rc so new aliases/functions are picked up immediately. Pass `-f`/`--force` to discard unstaged changes to tracked files first (`git reset --hard`) when the box's checkout has local edits blocking the pull.
 - **`claude_worktree [-a|-d|-b|--base|--delete] [--force] [id]`** (aliased to **`cwt`**) — start a background tmux session (`<prefix>-<id>`, id defaults to `0`) running `claude --worktree`. Because tmux runs on the box, the session survives SSH disconnects. The prefix is `tmux-claude`, or — inside a Codespace — the codespace name with its trailing random segment stripped.
   - `cwt [-a|-d] [id]` — create session `<prefix>-id`; `-a` attach (default), `-d` background.
   - `cwt [-a|-d] id -b|--base base_id` — create session `<prefix>-id` but run claude inside the **existing** worktree `<prefix>-base_id` instead of creating a new one; errors if that worktree doesn't exist. `-b` is an option (takes the base worktree id) and combines with `-a`/`-d` in any order, e.g. `cwt -d 2 -b 1` backgrounds session `<prefix>-2` running claude in worktree `<prefix>-1`.

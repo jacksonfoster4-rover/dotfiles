@@ -13,7 +13,17 @@ alias restartcontainers="dc down && dc up -d"
 alias msp="m shell_plus"
 # Pull the latest dotfiles and re-run the installer (updates nvim config +
 # plugins). Runs install.sh from the repo root since it relies on $(pwd).
+#   reload_dotfiles             pull; stops if the checkout has local changes
+#   reload_dotfiles -f|--force  discard unstaged changes first, then pull
 reload_dotfiles() {
+  # With -f/--force, throw away any local modifications to tracked files in the
+  # dotfiles checkout so the ff-only pull below can't be blocked by "your local
+  # changes would be overwritten by merge". Handy on a box where something
+  # edited the dotfiles in place; without it, reload_dotfiles stops and leaves
+  # you to resolve by hand. Only touches tracked files — untracked ones stay.
+  local force=""
+  [[ "$1" == "-f" || "$1" == "--force" ]] && force=1
+  [[ -n "$force" ]] && { git -C "$DOTFILES_PATH" reset --hard HEAD || return; }
   # +Lazy! sync updates plugins; +TSUpdateSync recompiles every treesitter
   # parser against the running nvim's ABI. The Sync variant blocks (plain
   # +TSUpdate is async and would lose the race against install.sh's +qa),
