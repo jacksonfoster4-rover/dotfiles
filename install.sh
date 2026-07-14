@@ -3,15 +3,47 @@ set -e
 
 echo "Setting up dotfiles for Codespaces..."
 
-# Neovim config
-mkdir -p ~/.config/nvim
-cp -r $(pwd)/nvim/* ~/.config/nvim/
+# Neovim — install a modern build if the box doesn't have one. The plugin +
+# treesitter steps below want nvim >= 0.9 (apt's build is too old), and a
+# Codespace base image doesn't always ship nvim at all, so grab the official
+# stable linux tarball into ~/.local. Best-effort: if it can't be installed we
+# warn and skip the nvim steps rather than aborting the whole install (set -e
+# is suspended inside the `if` condition, so a mid-chain failure just warns).
+if ! command -v nvim >/dev/null 2>&1; then
+    echo "nvim not found — installing a stable build..."
+    case "$(uname -m)" in
+        x86_64)        nvim_asset="nvim-linux-x86_64.tar.gz" ;;
+        aarch64|arm64) nvim_asset="nvim-linux-arm64.tar.gz" ;;
+        *)             nvim_asset="" ;;
+    esac
+    if [ -n "$nvim_asset" ] &&
+        curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/$nvim_asset" -o /tmp/nvim.tar.gz &&
+        mkdir -p "$HOME/.local/bin" &&
+        tar -C "$HOME/.local" -xzf /tmp/nvim.tar.gz; then
+        # The tarball's top-level dir matches the asset name minus .tar.gz.
+        ln -sf "$HOME/.local/${nvim_asset%.tar.gz}/bin/nvim" "$HOME/.local/bin/nvim"
+        # Put it on PATH for the rest of THIS script; ~/.local/bin is already on
+        # PATH for future interactive shells on Codespaces.
+        export PATH="$HOME/.local/bin:$PATH"
+        rm -f /tmp/nvim.tar.gz
+        echo "nvim installed to $HOME/.local/${nvim_asset%.tar.gz}."
+    else
+        echo "WARNING: could not install nvim automatically ($(uname -m)); skipping nvim config steps." >&2
+    fi
+fi
 
-# Install plugins in headless mode
-nvim --headless "$@" +qa
+# Neovim config + plugins — only if nvim is actually available (present already
+# or just installed above); otherwise skip so the shell/git config still runs.
+if command -v nvim >/dev/null 2>&1; then
+    mkdir -p ~/.config/nvim
+    cp -r $(pwd)/nvim/* ~/.config/nvim/
 
-# config help text
-nvim --headless +"helptags ALL" +qa
+    # Install plugins in headless mode
+    nvim --headless "$@" +qa
+
+    # config help text
+    nvim --headless +"helptags ALL" +qa
+fi
 
 # Ghostty terminfo — when SSH'd into this codespace from Ghostty, TERM is
 # xterm-ghostty, which the box doesn't know ("unknown terminal type"), breaking
