@@ -6,7 +6,7 @@ If you are reading this, welcome. These are my dotfiles intended for Codespaces.
 
 | Path | What |
 |------|------|
-| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + tmux MCP venv + Claude memory). |
+| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + tmux MCP venv + Claude memory + `rover-vault` clone). |
 | `bin/` | Standalone scripts. `tmux-mcp-server.py` — MCP server for remote tmux control (see below). |
 | `claude/` | Claude Code guidance imported into the codespace's `~/.claude/CLAUDE.md`. `codespace-worktree.md` — worktree vs. `/workspaces/web` run rules. |
 | `nvim/` | Neovim config — `init.lua` + `lua/plugins/*` (lazy.nvim). |

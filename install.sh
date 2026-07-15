@@ -112,4 +112,42 @@ if ! grep -qF "<!-- dotfiles:codespace-worktree-guidance -->" "$CLAUDE_MEMORY"; 
         "$DOTFILES_ROOT/claude/codespace-worktree.md" >> "$CLAUDE_MEMORY"
 fi
 
+# Obsidian vault — the notes vault lives on the Mac, which the codespace can't
+# see, so clone the separate GitHub repo onto the box and expose it to every
+# Claude session as an additional readable directory (no manual /add-dir).
+# Best-effort: git/jq failures warn but don't abort the rest of install.sh (the
+# ops live inside the `if` so `set -e` treats a failure as a false branch). The
+# `git pull` only runs on codespace create/reload — use `reload_dotfiles` (or a
+# manual pull) to refresh mid-life.
+VAULT_DIR="$HOME/rover-vault"
+if [ ! -d "$VAULT_DIR/.git" ]; then
+    echo "Cloning rover-vault..."
+    # gh repo clone rides the codespace's existing gh auth, so the private repo
+    # clones without a separate credential setup.
+    if gh repo clone jacksonfoster4-rover/rover-vault "$VAULT_DIR"; then
+        echo "rover-vault cloned to $VAULT_DIR."
+    else
+        echo "WARNING: could not clone rover-vault; skipping vault setup." >&2
+    fi
+else
+    git -C "$VAULT_DIR" pull --ff-only || true
+fi
+
+# Register the vault in Claude's global settings so every session can read it.
+# Merge into permissions.additionalDirectories (idempotent via `unique`) instead
+# of clobbering whatever else lives in settings.json.
+if [ -d "$VAULT_DIR" ] && command -v jq >/dev/null 2>&1; then
+    CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+    [ -f "$CLAUDE_SETTINGS" ] || echo '{}' > "$CLAUDE_SETTINGS"
+    settings_tmp=$(mktemp)
+    if jq --arg d "$VAULT_DIR" \
+        '.permissions.additionalDirectories = ((.permissions.additionalDirectories // []) + [$d] | unique)' \
+        "$CLAUDE_SETTINGS" > "$settings_tmp"; then
+        mv "$settings_tmp" "$CLAUDE_SETTINGS"
+    else
+        rm -f "$settings_tmp"
+        echo "WARNING: could not register vault dir in $CLAUDE_SETTINGS." >&2
+    fi
+fi
+
 echo "Dotfiles setup complete!"
