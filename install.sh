@@ -120,11 +120,17 @@ fi
 # `git pull` only runs on codespace create/reload — use `reload_dotfiles` (or a
 # manual pull) to refresh mid-life.
 VAULT_DIR="$HOME/rover-vault"
-if [ ! -d "$VAULT_DIR/.git" ]; then
+VAULT_REPO="jacksonfoster4-rover/rover-vault"
+# The codespace's default gh/GITHUB_TOKEN is scoped to the source repo + its org
+# and CANNOT read a private repo under my personal account, so we authenticate
+# with a fine-grained PAT exposed as the ROVER_VAULT_TOKEN Codespaces secret.
+if [ -z "${ROVER_VAULT_TOKEN:-}" ]; then
+    echo "WARNING: ROVER_VAULT_TOKEN not set — skipping rover-vault clone. Add it as a Codespaces secret (fine-grained PAT, Contents: read+write)." >&2
+elif [ ! -d "$VAULT_DIR/.git" ]; then
     echo "Cloning rover-vault..."
-    # gh repo clone rides the codespace's existing gh auth, so the private repo
-    # clones without a separate credential setup.
-    if gh repo clone jacksonfoster4-rover/rover-vault "$VAULT_DIR"; then
+    # Embed the token in the remote URL so the Stop-hook's later pull/push also
+    # authenticate without any extra credential-helper setup.
+    if git clone "https://oauth2:${ROVER_VAULT_TOKEN}@github.com/${VAULT_REPO}.git" "$VAULT_DIR"; then
         echo "rover-vault cloned to $VAULT_DIR."
     else
         echo "WARNING: could not clone rover-vault; skipping vault setup." >&2
