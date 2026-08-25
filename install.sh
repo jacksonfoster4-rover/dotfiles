@@ -60,9 +60,6 @@ if command -v tic >/dev/null 2>&1 && [ -f "$DOTFILES_ROOT/ghostty.terminfo" ]; t
     tic -x "$DOTFILES_ROOT/ghostty.terminfo" 2>/dev/null || true
 fi
 
-# Git config (safe to overwrite)
-ln -sf "$DOTFILES_ROOT/.gitconfig" ~/.gitconfig
-
 # shared bashrc and zshrc config
 if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.bashrc.append; then
     echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.bashrc.append

@@ -49,24 +49,19 @@ return {
         })
       end
 
-      -- ── Local repo root (differs per dev box) ────────────────────────────
-      -- The debugger maps container paths to HOST paths, and the host path of
-      -- the web checkout depends on the box:
-      --   • GitHub Codespace → /workspaces/web
-      --   • Coder workspace  → STUB, not yet confirmed (see TODO below)
-      -- Resolve it once here so the mappings below stay box-agnostic. An
-      -- explicit $DOTFILES_WEB_ROOT always wins, so you can point it anywhere
-      -- without editing this file.
+      -- ── Local repo root ──────────────────────────────────────────────────
+      -- The debugger maps the debugpy container's paths to the paths NEOVIM
+      -- sees, and nvim always runs inside the dev container — a Codespace or a
+      -- Coder devcontainer — where the checkout is /workspaces/<repo> either
+      -- way. (Coder clones to /home/coder/workspaces/web on the host and bind-
+      -- mounts it in under the same /workspaces name, so the inside view
+      -- matches Codespaces; the host path never reaches nvim.) Resolve it once
+      -- here so the mappings below stay box-agnostic. An explicit
+      -- $DOTFILES_WEB_ROOT always wins, so you can point it anywhere without
+      -- editing this file.
       local web_root = os.getenv("DOTFILES_WEB_ROOT")
       if not web_root or web_root == "" then
-        if os.getenv("CODER_WORKSPACE_NAME") then
-          -- TODO(coder): set the real host path of the web checkout on a Coder
-          -- workspace. Until then fall back to the Codespaces path so nothing
-          -- regresses there; override with $DOTFILES_WEB_ROOT in the meantime.
-          web_root = "/workspaces/web"
-        else
-          web_root = "/workspaces/web" -- Codespaces default
-        end
+        web_root = "/workspaces/web"
       end
 
       -- ── Path mappings ────────────────────────────────────────────────────
