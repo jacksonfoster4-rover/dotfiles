@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Setting up dotfiles for Codespaces..."
+# Resolve the dotfiles checkout from THIS script's own location, so the installer
+# works wherever the repo is cloned — a GitHub Codespace, a Coder workspace, or a
+# plain local machine — instead of assuming Codespaces' persisted-share path.
+# Everything below references $DOTFILES_ROOT, so there's a single source of truth.
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Setting up dotfiles..."
 
 # Neovim — install a modern build if the box doesn't have one. The plugin +
 # treesitter steps below want nvim >= 0.9 (apt's build is too old), and a
@@ -36,7 +42,7 @@ fi
 # or just installed above); otherwise skip so the shell/git config still runs.
 if command -v nvim >/dev/null 2>&1; then
     mkdir -p ~/.config/nvim
-    cp -r $(pwd)/nvim/* ~/.config/nvim/
+    cp -r "$DOTFILES_ROOT"/nvim/* ~/.config/nvim/
 
     # Install plugins in headless mode
     nvim --headless "$@" +qa
@@ -50,34 +56,12 @@ fi
 # clear/less/vim. Compile the bundled terminfo source into ~/.terminfo so those
 # work. (gh codespace ssh isn't wrapped by Ghostty's ssh-terminfo integration,
 # so we install it here instead.)
-if command -v tic >/dev/null 2>&1 && [ -f "$(pwd)/ghostty.terminfo" ]; then
-    tic -x "$(pwd)/ghostty.terminfo" 2>/dev/null || true
+if command -v tic >/dev/null 2>&1 && [ -f "$DOTFILES_ROOT/ghostty.terminfo" ]; then
+    tic -x "$DOTFILES_ROOT/ghostty.terminfo" 2>/dev/null || true
 fi
-
-
-# tmux MCP server — isolated venv so the `mcp` SDK never fights the monorepo's
-# own Python env. Guarded on the venv python existing so the slow pip install
-# only runs on first setup (keeps re-runs fast + idempotent). Non-fatal: a
-# failure here warns but doesn't abort the rest of the install (nvim, shell).
-TMUX_MCP_VENV="$HOME/.tmux-mcp-venv"
-if [ ! -x "$TMUX_MCP_VENV/bin/python" ]; then
-    echo "Provisioning tmux MCP server venv..."
-    # The venv/pip commands live inside the `if` condition so `set -e` treats a
-    # failure as a false branch (warn + continue) instead of aborting install.sh.
-    if python3 -m venv "$TMUX_MCP_VENV" &&
-        "$TMUX_MCP_VENV/bin/pip" install --quiet --upgrade pip mcp; then
-        echo "tmux MCP server venv ready."
-    else
-        echo "WARNING: tmux MCP server venv setup failed; skipping it (rest of install continues)." >&2
-    fi
-fi
-# Make the server directly executable too (handy for local testing on the box).
-[ -f "$(pwd)/bin/tmux-mcp-server.py" ] && chmod +x "$(pwd)/bin/tmux-mcp-server.py"
 
 # Git config (safe to overwrite)
-ln -sf $(pwd)/.gitconfig ~/.gitconfig
-
-DOTFILES_ROOT=/workspaces/.codespaces/.persistedshare/dotfiles
+ln -sf "$DOTFILES_ROOT/.gitconfig" ~/.gitconfig
 
 # shared bashrc and zshrc config
 if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.bashrc.append; then

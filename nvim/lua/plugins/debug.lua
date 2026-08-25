@@ -49,24 +49,44 @@ return {
         })
       end
 
+      -- ── Local repo root (differs per dev box) ────────────────────────────
+      -- The debugger maps container paths to HOST paths, and the host path of
+      -- the web checkout depends on the box:
+      --   • GitHub Codespace → /workspaces/web
+      --   • Coder workspace  → STUB, not yet confirmed (see TODO below)
+      -- Resolve it once here so the mappings below stay box-agnostic. An
+      -- explicit $DOTFILES_WEB_ROOT always wins, so you can point it anywhere
+      -- without editing this file.
+      local web_root = os.getenv("DOTFILES_WEB_ROOT")
+      if not web_root or web_root == "" then
+        if os.getenv("CODER_WORKSPACE_NAME") then
+          -- TODO(coder): set the real host path of the web checkout on a Coder
+          -- workspace. Until then fall back to the Codespaces path so nothing
+          -- regresses there; override with $DOTFILES_WEB_ROOT in the meantime.
+          web_root = "/workspaces/web"
+        else
+          web_root = "/workspaces/web" -- Codespaces default
+        end
+      end
+
       -- ── Path mappings ────────────────────────────────────────────────────
       -- The single most important setting for Docker debugging. debugpy runs
       -- INSIDE the container and reports file paths as they exist there
-      -- (/web/...); Neovim runs on the Codespace HOST where the same files
-      -- live under /workspaces/web/... . Without a mapping, a breakpoint's
-      -- host path won't match any path debugpy knows, so it silently never
-      -- fires. These entries mirror .vscode/launch.json's Django configs.
+      -- (/web/...); Neovim runs on the box HOST where the same files live under
+      -- web_root/... (see above). Without a mapping, a breakpoint's host path
+      -- won't match any path debugpy knows, so it silently never fires. These
+      -- entries mirror .vscode/launch.json's Django configs.
       --
       -- Order matters: the more specific venv → site-packages entry MUST come
       -- before the general repo entry, or the general one shadows it. The venv
       -- entry is what lets you step into installed packages (Django, DRF, …).
       local path_mappings = {
         {
-          localRoot  = "/workspaces/web/venv/lib/python3.11/site-packages",
+          localRoot  = web_root .. "/venv/lib/python3.11/site-packages",
           remoteRoot = "/usr/local/lib/python3.11/site-packages",
         },
         {
-          localRoot  = "/workspaces/web",
+          localRoot  = web_root,
           remoteRoot = "/web",
         },
       }

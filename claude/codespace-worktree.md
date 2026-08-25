@@ -1,8 +1,16 @@
-# Codespace: worktrees vs. /workspaces/web
+# Dev box: worktrees vs. the main checkout
 
-This codespace has **one** dev environment — the Docker stack, database, and
-dev-server ports are all bound to `/workspaces/web`. Read these rules before you
-run anything.
+This box has **one** dev environment — the Docker stack, database, and
+dev-server ports are all bound to the main web checkout. Read these rules before
+you run anything.
+
+> **Note — path assumes a Codespace.** The rules below use `/workspaces/web` as
+> the main checkout path, which is correct on a GitHub Codespace. On a **Coder
+> workspace** the path differs.
+>
+> **TODO(coder): STUB — confirm the real Coder path and update this doc.** Until
+> then, on Coder read every `/workspaces/web` below as "the main web checkout on
+> this box" and adjust the commands accordingly.
 
 ## The app only runs at /workspaces/web
 

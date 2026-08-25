@@ -1,4 +1,16 @@
-export DOTFILES_PATH="/workspaces/.codespaces/.persistedshare/dotfiles"
+# Resolve the dotfiles checkout from wherever THIS file is sourced, so it works
+# on any box (Codespaces, Coder, local) rather than a hardcoded Codespaces path.
+# This file lives at the repo root, so dirname of its own path IS that root, and
+# reload_dotfiles uses $DOTFILES_PATH as the repo root. The sourced-file path is
+# $BASH_SOURCE in bash; zsh's ${(%):-%x} prompt-expansion is the equivalent (the
+# bash branch never runs that zsh-only syntax, so bash won't choke on it).
+if [ -n "${ZSH_VERSION:-}" ]; then
+  _dotfiles_src="${(%):-%x}"
+else
+  _dotfiles_src="${BASH_SOURCE[0]}"
+fi
+export DOTFILES_PATH="$(cd "$(dirname "$_dotfiles_src")" >/dev/null 2>&1 && pwd)"
+unset _dotfiles_src
 alias start_rxn="(cd src/frontend/reactNativeApp && pnpm start)"
 alias preload_rxn="curl -o /dev/null 'http://localhost:8081/index.bundle?platform=ios&dev=true&lazy=true&minify=false&inlineSourceMap=false&modulesOnly=false&runModule=true&excludeSource=true&sourcePaths=url-server&app=com.rover.Rover-com' \
 -H 'Host: localhost:8081' \
@@ -43,10 +55,12 @@ alias staging="k9s --context staging-a"
 # Because tmux runs on the box, the session survives SSH disconnects — reconnect
 # and re-run to land back in the same Claude session.
 # Session name is "<prefix>-<ID>" (ID defaults to 0, but can be any text), so you
-# can run several in parallel. The prefix is "tmux-claude", or — inside a
-# Codespace ($CODESPACE_NAME set) — the codespace name with its trailing random
-# segment (everything after the last "-") stripped, so sessions are grouped per
-# codespace. The session is created (detached, in the background) if it doesn't
+# can run several in parallel. The prefix is "tmux-claude", or — on a hosted dev
+# box — a per-box name: inside a Codespace ($CODESPACE_NAME) the codespace name
+# with its trailing random segment (everything after the last "-") stripped, or
+# inside a Coder workspace ($CODER_WORKSPACE_NAME) the workspace name as-is (it
+# has no random suffix). This groups sessions per box. The session is created
+# (detached, in the background) if it doesn't
 # already exist; nothing steals your terminal unless you ask to attach. The name
 # is also passed to `claude --worktree <name>` so the git worktree lands at a
 # predictable path (.claude/worktrees/<name>) and can be pruned on delete.
@@ -58,12 +72,19 @@ alias staging="k9s --context staging-a"
 #   claude_worktree cd 2         cd into <prefix>-2's worktree dir (must exist)
 # -a is the default when no flag is given.
 claude_worktree() {
-  # Session-name prefix. Default "tmux-claude", but inside a Codespace use the
-  # codespace name with its trailing random segment stripped. "${VAR%-*}" is a
-  # shell parameter expansion: it removes the shortest match of "-*" from the
-  # end, i.e. everything after (and including) the last "-".
+  # Session-name prefix. Default "tmux-claude", but on a hosted dev box use a
+  # per-box name so sessions group per box.
   local prefix="tmux-claude"
-  [[ -n "$CODESPACE_NAME" ]] && prefix="${CODESPACE_NAME%-*}"
+  if [[ -n "$CODESPACE_NAME" ]]; then
+    # Codespaces: strip the codespace name's trailing random segment. "${VAR%-*}"
+    # is a shell parameter expansion that removes the shortest match of "-*" from
+    # the end, i.e. everything after (and including) the last "-".
+    prefix="${CODESPACE_NAME%-*}"
+  elif [[ -n "$CODER_WORKSPACE_NAME" ]]; then
+    # Coder: the workspace name is already stable (no random suffix), so use it
+    # as-is.
+    prefix="$CODER_WORKSPACE_NAME"
+  fi
 
   # The MAIN worktree root — where all the .claude/worktrees/* copies live.
   # NOT `git rev-parse --show-toplevel`: that returns whichever worktree you're
@@ -87,7 +108,7 @@ the tmux session lives on the box, it survives SSH disconnects — just re-run
 the same command to reattach and land back in the running Claude session.
 
 Session name is "$prefix-<ID>" (ID defaults to 0); the prefix is "tmux-claude",
-or inside a Codespace the codespace name. The worktree lands at a predictable
+or on a hosted dev box the Codespace / Coder workspace name. The worktree lands at a predictable
 path (.claude/worktrees/<session>) so it can be reused and pruned by ID.
 
 Usage:
