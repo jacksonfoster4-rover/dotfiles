@@ -102,22 +102,43 @@ fi
 # manual pull) to refresh mid-life.
 VAULT_DIR="$HOME/rover-vault"
 VAULT_REPO="jacksonfoster4-rover/rover-vault"
-# The codespace's default gh/GITHUB_TOKEN is scoped to the source repo + its org
-# and CANNOT read a private repo under my personal account, so we authenticate
-# with a fine-grained PAT exposed as the ROVER_VAULT_TOKEN Codespaces secret.
-if [ -z "${ROVER_VAULT_TOKEN:-}" ]; then
-    echo "WARNING: ROVER_VAULT_TOKEN not set — skipping rover-vault clone. Add it as a Codespaces secret (fine-grained PAT, Contents: read+write)." >&2
-elif [ ! -d "$VAULT_DIR/.git" ]; then
-    echo "Cloning rover-vault..."
-    # Embed the token in the remote URL so the Stop-hook's later pull/push also
-    # authenticate without any extra credential-helper setup.
-    if git clone "https://oauth2:${ROVER_VAULT_TOKEN}@github.com/${VAULT_REPO}.git" "$VAULT_DIR"; then
-        echo "rover-vault cloned to $VAULT_DIR."
-    else
-        echo "WARNING: could not clone rover-vault; skipping vault setup." >&2
+# A codespace's default gh/GITHUB_TOKEN is scoped to the source repo + its org and
+# CANNOT read a private repo under my personal account, so there we authenticate with
+# a fine-grained PAT exposed as the ROVER_VAULT_TOKEN Codespaces secret. Anywhere else
+# (a Coder/Roverspace workspace, a local box) the ambient gh login is a token on my own
+# account, which can read it — so hand the clone to `gh` and skip the PAT entirely.
+clone_vault() {
+    if [ "${CODESPACES:-}" = "true" ]; then
+        if [ -z "${ROVER_VAULT_TOKEN:-}" ]; then
+            echo "WARNING: ROVER_VAULT_TOKEN not set — skipping rover-vault clone. Add it as a Codespaces secret (fine-grained PAT, Contents: read+write)." >&2
+            return 1
+        fi
+        # Embed the token in the remote URL so the Stop-hook's later pull/push also
+        # authenticate without any extra credential-helper setup.
+        git clone "https://oauth2:${ROVER_VAULT_TOKEN}@github.com/${VAULT_REPO}.git" "$VAULT_DIR"
+        return
     fi
-else
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "WARNING: gh not installed — skipping rover-vault clone." >&2
+        return 1
+    fi
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "WARNING: gh is not authenticated — skipping rover-vault clone. Run 'gh auth login' (or set GH_TOKEN) and re-run install.sh." >&2
+        return 1
+    fi
+    gh repo clone "$VAULT_REPO" "$VAULT_DIR" || return 1
+    # The remote carries no token, so point it at gh for credentials — repo-locally,
+    # to leave ~/.gitconfig alone. The Stop hook's later pull/push then authenticate
+    # the same way, and keep working after the ambient token rotates.
+    git -C "$VAULT_DIR" config credential.helper '!gh auth git-credential'
+}
+
+if [ -d "$VAULT_DIR/.git" ]; then
     git -C "$VAULT_DIR" pull --ff-only || true
+elif clone_vault; then
+    echo "rover-vault cloned to $VAULT_DIR."
+else
+    echo "WARNING: could not clone rover-vault; skipping vault setup." >&2
 fi
 
 # Register the vault in Claude's global settings so every session can read it.
