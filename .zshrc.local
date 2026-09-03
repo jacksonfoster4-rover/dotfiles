@@ -10,6 +10,7 @@ alias reload_nvim="rm -rf ~/.local/share/nvim && rm -rf ~/.config/nvim/ && cp -r
 alias create_codespace="gh cs create -R roverdotcom/web -m premiumLinux"
 alias fetch_ios="rover-cli mobile fetch ios"
 alias change_host="rover-cli m change-api-host"
+alias staging="k9s --context staging-a"
 
 function browse {
   local port=${1-8001}
@@ -20,7 +21,7 @@ function browse {
   open "http://${domain}:$port/"
 }
 
-function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs kill -9 }
+function killport() { lsof -i TCP:$1 | grep LISTEN | awk '{print $2}' | xargs kill -9; }
 
 # Pick a Codespace interactively and echo its name. Runs OUTSIDE tmux so the
 # selection prompt shows in the current terminal; the chosen name is then passed
