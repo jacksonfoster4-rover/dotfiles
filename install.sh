@@ -80,17 +80,26 @@ if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
 fi
 
 # Codespace CLAUDE.md guidance — teach every Claude agent on this box the
-# worktree/run rules (only /workspaces/web can run the site + aliases). We APPEND
-# an @import line (a plain markdown comment as the idempotency marker, so it's
-# invisible in the rendered memory) instead of overwriting ~/.claude/CLAUDE.md,
-# which may already hold other content. Because it's an import, edits to the
-# guidance file are picked up without re-running install.sh.
+# worktree/run rules (only /workspaces/web can run the site + aliases). The
+# guidance file now lives in the synced claude-settings repo (versioned with the
+# rest of the Claude config), not in dotfiles. We surface it on THIS box only:
+# install.sh runs on dev boxes only, so the symlink below is created only on dev
+# boxes. The @import line may sync into CLAUDE.md everywhere, but it points at the
+# symlink path — so it resolves on a dev box and silently no-ops on the laptop,
+# where the link is never created. We APPEND the @import (a markdown-comment
+# idempotency marker keeps it invisible and re-runs safe) instead of overwriting
+# ~/.claude/CLAUDE.md. Because it's an import, edits to the guidance file are
+# picked up without re-running install.sh.
 CLAUDE_MEMORY="$HOME/.claude/CLAUDE.md"
+WORKTREE_GUIDANCE="$HOME/.local/share/claude-sync/repo/codespace-worktree.md"
 mkdir -p "$HOME/.claude"
 touch "$CLAUDE_MEMORY"
+# Dev-box-only symlink into ~/.claude so the @import resolves here but not on the
+# laptop (install.sh never runs there, so the link is never created).
+[ -f "$WORKTREE_GUIDANCE" ] && ln -sf "$WORKTREE_GUIDANCE" "$HOME/.claude/codespace-worktree.md"
 if ! grep -qF "<!-- dotfiles:codespace-worktree-guidance -->" "$CLAUDE_MEMORY"; then
     printf '\n<!-- dotfiles:codespace-worktree-guidance -->\n@%s\n' \
-        "$DOTFILES_ROOT/claude/codespace-worktree.md" >> "$CLAUDE_MEMORY"
+        "$HOME/.claude/codespace-worktree.md" >> "$CLAUDE_MEMORY"
 fi
 
 # Obsidian vault — the notes vault lives on the Mac, which the codespace can't
