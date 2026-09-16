@@ -1,1 +1,2 @@
-alias sync-docker-config="$HOME/projects/dotfiles/sync-docker-config.sh"
+# Zsh-only shell config, sourced from ~/.zshrc by install.sh.
+# install.sh appends the shared `source .../.sharedrc.append` line below on install.

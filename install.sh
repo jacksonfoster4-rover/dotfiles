@@ -49,6 +49,61 @@ if command -v nvim >/dev/null 2>&1; then
 
     # config help text
     nvim --headless +"helptags ALL" +qa
+
+    # Language servers behind the LSP shortcuts (;gd go-to-definition, ;gr
+    # references, ;rn rename, ;ca code actions, ;h hover, ;fo symbols …). Mason
+    # manages these binaries. mason-lspconfig's `ensure_installed`
+    # (plugins/mason_config.lua) kicks the installs off ASYNCHRONOUSLY — but the
+    # `+qa` above quits the headless nvim before they finish, so on a fresh box
+    # the servers aren't on disk at first launch and ;gd fails with a Mason
+    # "not installed" error. Install them SYNCHRONOUSLY here instead: run
+    # headless, `:MasonInstall` BLOCKS until every package is downloaded (Mason's
+    # built-in headless/CI behaviour), so this line returns only once ;gd et al.
+    # actually work. The names are Mason PACKAGE names (eslint-lsp,
+    # typescript-language-server) — they differ from the lspconfig server names
+    # used in ensure_installed. pyright, ts_ls and eslint are npm packages, so
+    # Mason needs node + npm on PATH to build them; warn (don't abort) if missing.
+    if ! command -v node >/dev/null 2>&1; then
+        echo "WARNING: node not found — Mason can't build pyright/ts_ls/eslint; the LSP shortcuts (;gd, ;gr, …) stay dead until node is on PATH." >&2
+    fi
+    nvim --headless -c 'MasonInstall pyright ruff typescript-language-server eslint-lsp' -c 'qall' ||
+        echo "WARNING: Mason server install failed; open nvim and run :Mason to finish it — the LSP shortcuts need these." >&2
+fi
+
+# ripgrep — telescope's live_grep / live_grep_args pickers (the ;ff and ;fc
+# maps) hard-require it; without a real `rg` on PATH they error out with
+# "'ripgrep' ... is a required dependency". The Codespace base image and a
+# fresh Mac don't always ship it, so install it when missing. Best-effort like
+# the nvim block above: warn and carry on rather than aborting the whole
+# install. Guarded by `command -v rg` so re-runs are a no-op.
+if ! command -v rg >/dev/null 2>&1; then
+    echo "ripgrep not found — installing (needed for nvim ;ff search)..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install ripgrep || echo "WARNING: 'brew install ripgrep' failed; install ripgrep manually so nvim ;ff works." >&2
+    elif command -v apt-get >/dev/null 2>&1; then
+        # Codespaces base images grant passwordless sudo; ripgrep is in apt.
+        sudo apt-get update -y && sudo apt-get install -y ripgrep ||
+            echo "WARNING: 'apt-get install ripgrep' failed; install ripgrep manually so nvim ;ff works." >&2
+    else
+        echo "WARNING: no brew/apt-get found to install ripgrep; nvim ;ff (telescope live_grep) needs it — install ripgrep manually." >&2
+    fi
+fi
+
+# fd — the fast file finder telescope's find_files picker (;fn) prefers. Without
+# it telescope falls back to `rg --files`, so ;fn still works, just slower. Best
+# effort + idempotent like the ripgrep block above. On Debian/apt the package is
+# `fd-find` and it installs the binary as `fdfind` (NOT `fd`) — telescope accepts
+# either — so the guard checks for both before deciding it's missing.
+if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
+    echo "fd not found — installing (speeds up the nvim ;fn file finder)..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install fd || echo "WARNING: 'brew install fd' failed; ;fn still works via ripgrep." >&2
+    elif command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update -y && sudo apt-get install -y fd-find ||
+            echo "WARNING: 'apt-get install fd-find' failed; ;fn still works via ripgrep." >&2
+    else
+        echo "WARNING: no brew/apt-get found to install fd; ;fn will fall back to ripgrep (fine, just slower)." >&2
+    fi
 fi
 
 # Ghostty terminfo — when SSH'd into this codespace from Ghostty, TERM is
