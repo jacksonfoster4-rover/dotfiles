@@ -143,6 +143,30 @@ if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
     echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $DOTFILES_ROOT/.zshrc.append" >> ~/.zshrc
 fi
 
+# Repair a ~/.bashrc whose distro preamble arrives mangled. Some images drop
+# every blank line together with the line after it, which deletes the `if`
+# lines of the colour-prompt block and breaks interactive bash with "syntax
+# error near unexpected token `fi'". The damage only removes lines, so everything
+# before the first line missing from /etc/skel's copy is preamble: swap it for a
+# clean skel copy and keep the rest untouched. The old file is kept as a backup.
+if [ -f ~/.bashrc ] && [ -f /etc/skel/.bashrc ] && ! bash -n ~/.bashrc 2>/dev/null; then
+    echo "~/.bashrc has a syntax error — restoring its distro preamble from /etc/skel..."
+    bashrc_tmp=$(mktemp)
+    cp ~/.bashrc ~/.bashrc.broken-backup
+    {
+        cat /etc/skel/.bashrc
+        awk 'NR == FNR { skel[$0] = 1; next } kept || !($0 in skel) { kept = 1; print }' \
+            /etc/skel/.bashrc ~/.bashrc
+    } > "$bashrc_tmp"
+    if bash -n "$bashrc_tmp" 2>/dev/null; then
+        mv "$bashrc_tmp" ~/.bashrc
+        echo "~/.bashrc repaired (old copy at ~/.bashrc.broken-backup)."
+    else
+        rm -f "$bashrc_tmp"
+        echo "WARNING: could not repair ~/.bashrc automatically; see ~/.bashrc.broken-backup." >&2
+    fi
+fi
+
 # Append custom bashrc without losing Codespaces defaults
 if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
