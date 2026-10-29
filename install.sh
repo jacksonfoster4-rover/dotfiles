@@ -106,6 +106,20 @@ if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
     fi
 fi
 
+# difit — GitHub-like local diff viewer for pre-PR review with inline comments.
+# The `review` function in .sharedrc.append launches it for the current branch
+# vs master, headless on a fixed port that Coder's port forwarding surfaces.
+# Install globally via npm; guarded by `command -v difit` so re-runs are a no-op,
+# and best-effort like the blocks above — warn and carry on if npm is missing.
+if ! command -v difit >/dev/null 2>&1; then
+    if command -v npm >/dev/null 2>&1; then
+        echo "difit not found — installing (local diff review)..."
+        npm install -g difit || echo "WARNING: 'npm install -g difit' failed; install it manually (npm i -g difit) for the 'review' alias." >&2
+    else
+        echo "WARNING: npm not found — skipping difit install; the 'review' alias needs it (npm i -g difit)." >&2
+    fi
+fi
+
 # Ghostty terminfo — when SSH'd into this codespace from Ghostty, TERM is
 # xterm-ghostty, which the box doesn't know ("unknown terminal type"), breaking
 # clear/less/vim. Compile the bundled terminfo source into ~/.terminfo so those

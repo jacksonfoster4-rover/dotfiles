@@ -51,3 +51,32 @@ reload_dotfiles() {
   fi
 }
 alias staging="k9s --context staging-a"
+
+# review — open the current branch's diff vs master in difit, a GitHub-like diff
+# viewer with inline comments. Serves headless on a fixed port (4966), bound to
+# 0.0.0.0 so Coder Connect can reach it, and prints the URL to open from the
+# laptop. Over Coder Connect the workspace is one host with the port in the
+# authority (URI_AUTHORITY is <host>:8001), so we swap in difit's port; off a
+# Roverspace box it falls back to localhost. Fetches the base first, then diffs
+# from the merge-base (true branch-vs-master, like a PR) to HEAD. Ctrl-C stops it.
+#   review                 # vs origin/master
+#   review origin/release  # vs another base ref
+review() {
+  local base="${1:-origin/master}"
+  if ! command -v difit >/dev/null 2>&1; then
+    echo "difit not installed — run reload_dotfiles (or: npm i -g difit)" >&2
+    return 1
+  fi
+  # Best-effort refresh of the base; strip any remote/ prefix for the fetch.
+  git fetch --quiet origin "${base##*/}" 2>/dev/null || true
+  local host
+  if [ -n "${URI_AUTHORITY:-}" ]; then
+    host="${URI_AUTHORITY%:*}"
+  elif [ -n "${CODER_WORKSPACE_NAME:-}" ]; then
+    host="${CODER_WORKSPACE_AGENT_NAME}.${CODER_WORKSPACE_NAME}.${CODER_WORKSPACE_OWNER_NAME}.coder"
+  else
+    host="localhost"
+  fi
+  echo "difit → http://${host}:4966  (Ctrl-C to stop)"
+  difit "$base" --merge-base --no-open --keep-alive --host 0.0.0.0 --port 4966
+}
