@@ -78,5 +78,5 @@ review() {
     host="localhost"
   fi
   echo "difit → http://${host}:4966  (Ctrl-C to stop)"
-  difit "$base" --merge-base --no-open --keep-alive --host 0.0.0.0 --port 4966
+  difit HEAD "$base" --merge-base --no-open --keep-alive --host 0.0.0.0 --port 4966
 }
