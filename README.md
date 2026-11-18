@@ -6,7 +6,7 @@ If you are reading this, welcome. These are my dotfiles for hosted dev boxes —
 
 | Path | What |
 |------|------|
-| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + Claude memory + `rover-vault` clone). Resolves the checkout from its own location, so it runs on any box. On a dev box it also symlinks in the worktree/run guidance (`codespace-worktree.md`, which lives in the synced `claude-settings` repo) and `@import`s it into `~/.claude/CLAUDE.md`. |
+| `install.sh` | Idempotent installer (nvim + terminfo + shell wiring + Claude memory + `rover-vault` clone). Resolves the checkout from its own location, so it runs on any box. On a dev box it also symlinks in the worktree/run guidance (`codespace-worktree.md`, which lives in the synced `claude-settings` repo) and `@import`s it into `~/.claude/CLAUDE.md`. On a Coder workspace with the `CDR_URL` and `CDR_SESSION_TOKEN` Coder secrets, it sets the workspace schedule to start at 8am and stop at 7pm Pacific, Mon–Fri. |
 | `nvim/` | Neovim config — `init.lua` + `lua/plugins/*` (lazy.nvim). |
 | `.sharedrc.append` | Aliases + functions sourced in **both** bash and zsh. |
 | `.zshrc.append` / `.bashrc.append` | Shell-specific extras. |

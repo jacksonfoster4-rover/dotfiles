@@ -260,4 +260,51 @@ if [ -d "$VAULT_DIR" ] && command -v jq >/dev/null 2>&1; then
     fi
 fi
 
+# Coder workspace schedule — start at 8am and stop at 7pm Pacific, Mon–Fri, so
+# the workspace is up for the workday without anyone clicking Start. Only runs on
+# a Coder workspace (CODER_WORKSPACE_ID is set there) that has the CDR_URL and
+# CDR_SESSION_TOKEN Coder secrets. Coder's autostop is a run length counted from
+# each start, not a clock time, so 11h after an 8am start is 7pm; a manual start
+# at 10am runs until 9pm. America/Los_Angeles follows daylight saving, so it's
+# 8am local all year. Both calls are PUTs that replace the schedule, so re-runs
+# are safe. Best-effort: a failure warns and the rest of the install carries on.
+CODER_AUTOSTART_SCHEDULE="CRON_TZ=America/Los_Angeles 0 8 * * 1-5"
+CODER_AUTOSTOP_MS=$((11 * 60 * 60 * 1000))
+
+set_coder_schedule() {
+    # ${CDR_URL%/} drops a trailing slash so the path below doesn't get "//".
+    local api="${CDR_URL%/}/api/v2/workspaces/$CODER_WORKSPACE_ID"
+    local body status
+    for endpoint in autostart ttl; do
+        if [ "$endpoint" = autostart ]; then
+            body="{\"schedule\": \"$CODER_AUTOSTART_SCHEDULE\"}"
+        else
+            body="{\"ttl_ms\": $CODER_AUTOSTOP_MS}"
+        fi
+        # -w prints only the HTTP status; the response body goes to a temp file so
+        # it can be shown on failure. The token is never echoed.
+        local response
+        response=$(mktemp)
+        status=$(curl -sS -o "$response" -w '%{http_code}' -X PUT "$api/$endpoint" \
+            -H "Coder-Session-Token: $CDR_SESSION_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$body") || status="curl failed"
+        if [ "${status#2}" = "$status" ]; then
+            echo "WARNING: setting the Coder $endpoint schedule failed ($status): $(head -c 300 "$response")" >&2
+            rm -f "$response"
+            return 1
+        fi
+        rm -f "$response"
+    done
+    echo "Coder schedule set: starts 8am, stops 7pm Pacific, Mon–Fri."
+}
+
+if [ -n "${CODER_WORKSPACE_ID:-}" ]; then
+    if [ -z "${CDR_URL:-}" ] || [ -z "${CDR_SESSION_TOKEN:-}" ]; then
+        echo "WARNING: CDR_URL or CDR_SESSION_TOKEN not set — skipping the Coder workspace schedule. Add both as Coder secrets." >&2
+    else
+        set_coder_schedule || true
+    fi
+fi
+
 echo "Dotfiles setup complete!"
