@@ -262,18 +262,21 @@ fi
 
 # Coder workspace schedule — start at 8am and stop at 7pm Pacific, Mon–Fri, so
 # the workspace is up for the workday without anyone clicking Start. Only runs on
-# a Coder workspace (CODER_WORKSPACE_ID is set there) that has the CDR_URL and
-# CDR_SESSION_TOKEN Coder secrets. Coder's autostop is a run length counted from
+# a Coder workspace (CODER_WORKSPACE_ID is set there) that has the
+# CDR_SESSION_TOKEN Coder secret. It calls Coder's in-cluster address, the one the
+# agent uses, because Cloudflare Access 302s token-only requests to the public
+# hostname. Coder's autostop is a run length counted from
 # each start, not a clock time, so 11h after an 8am start is 7pm; a manual start
 # at 10am runs until 9pm. America/Los_Angeles follows daylight saving, so it's
 # 8am local all year. Both calls are PUTs that replace the schedule, so re-runs
 # are safe. Best-effort: a failure warns and the rest of the install carries on.
 CODER_AUTOSTART_SCHEDULE="CRON_TZ=America/Los_Angeles 0 8 * * 1-5"
 CODER_AUTOSTOP_MS=$((11 * 60 * 60 * 1000))
+CODER_API_URL="${CODER_INTERNAL_URL:-http://coder.coder.svc.cluster.local}"
 
 set_coder_schedule() {
-    # ${CDR_URL%/} drops a trailing slash so the path below doesn't get "//".
-    local api="${CDR_URL%/}/api/v2/workspaces/$CODER_WORKSPACE_ID"
+    # ${CODER_API_URL%/} drops a trailing slash so the path below doesn't get "//".
+    local api="${CODER_API_URL%/}/api/v2/workspaces/$CODER_WORKSPACE_ID"
     local body status
     for endpoint in autostart ttl; do
         if [ "$endpoint" = autostart ]; then
@@ -300,8 +303,8 @@ set_coder_schedule() {
 }
 
 if [ -n "${CODER_WORKSPACE_ID:-}" ]; then
-    if [ -z "${CDR_URL:-}" ] || [ -z "${CDR_SESSION_TOKEN:-}" ]; then
-        echo "WARNING: CDR_URL or CDR_SESSION_TOKEN not set — skipping the Coder workspace schedule. Add both as Coder secrets." >&2
+    if [ -z "${CDR_SESSION_TOKEN:-}" ]; then
+        echo "WARNING: CDR_SESSION_TOKEN not set — skipping the Coder workspace schedule. Add it as a Coder secret." >&2
     else
         set_coder_schedule || true
     fi
