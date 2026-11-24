@@ -133,8 +133,10 @@ fi
 # home-dir rc files get appended to — never files inside this checkout, which
 # would leave the repo dirty and block reload_dotfiles' fast-forward pull.
 
-# Append custom zshrc without losing the image's defaults
-if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
+# Append custom zshrc without losing the image's defaults. Detect by the source
+# line, not the comment marker: the rc mangling described below can delete the
+# marker (it sits after a blank line) while keeping the source line.
+if ! grep -qF "source $DOTFILES_ROOT/.zshrc.append" ~/.zshrc 2>/dev/null; then
     echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $DOTFILES_ROOT/.zshrc.append" >> ~/.zshrc
 fi
 
@@ -163,9 +165,24 @@ if [ -f ~/.bashrc ] && [ -f /etc/skel/.bashrc ] && ! bash -n ~/.bashrc 2>/dev/nu
 fi
 
 # Append custom bashrc without losing the image's defaults
-if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
+if ! grep -qF "source $DOTFILES_ROOT/.bashrc.append" ~/.bashrc 2>/dev/null; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
+
+# Make the rc files immune to the mangling. The culprit is the web repo's
+# scripts/refresh-secrets.sh (ensure-otel-shell-config): when it runs without
+# OTEL_SHELL_BLOCK_MARKER set, its awk treats every blank line as the marker and
+# deletes it plus the line after. It runs from onCreate/postStart, i.e. AFTER this
+# installer, so the repair above can't catch it on a fresh workspace. It only
+# ever removes a line that follows a blank line, so with no blank lines left it
+# has nothing structural to delete. `cat >` keeps the file's inode and perms.
+for rc in ~/.bashrc ~/.zshrc; do
+    if [ -f "$rc" ] && grep -q '^$' "$rc"; then
+        rc_tmp=$(mktemp)
+        grep -v '^$' "$rc" > "$rc_tmp" && cat "$rc_tmp" > "$rc"
+        rm -f "$rc_tmp"
+    fi
+done
 
 # Workspace CLAUDE.md guidance — teach every Claude agent on this box the
 # worktree/run rules (only /workspaces/web can run the site + aliases). The
