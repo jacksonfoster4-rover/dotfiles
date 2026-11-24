@@ -1,2 +1,5 @@
 # Zsh-only shell config, sourced from ~/.zshrc by install.sh.
-# install.sh appends the shared `source .../.sharedrc.append` line below on install.
+
+# Shared bash+zsh config. ${(%):-%x} is the path of THIS file and :A:h resolves
+# it to its folder, so this works wherever the repo is cloned.
+source "${${(%):-%x}:A:h}/.sharedrc.append"

@@ -2,8 +2,7 @@
 set -e
 
 # Resolve the dotfiles checkout from THIS script's own location, so the installer
-# works wherever the repo is cloned — a GitHub Codespace, a Coder workspace, or a
-# plain local machine — instead of assuming Codespaces' persisted-share path.
+# works wherever Coder (or anything else) clones the repo.
 # Everything below references $DOTFILES_ROOT, so there's a single source of truth.
 DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -11,7 +10,7 @@ echo "Setting up dotfiles..."
 
 # Neovim — install a modern build if the box doesn't have one. The plugin +
 # treesitter steps below want nvim >= 0.9 (apt's build is too old), and a
-# Codespace base image doesn't always ship nvim at all, so grab the official
+# workspace image doesn't always ship nvim at all, so grab the official
 # stable linux tarball into ~/.local. Best-effort: if it can't be installed we
 # warn and skip the nvim steps rather than aborting the whole install (set -e
 # is suspended inside the `if` condition, so a mid-chain failure just warns).
@@ -29,7 +28,7 @@ if ! command -v nvim >/dev/null 2>&1; then
         # The tarball's top-level dir matches the asset name minus .tar.gz.
         ln -sf "$HOME/.local/${nvim_asset%.tar.gz}/bin/nvim" "$HOME/.local/bin/nvim"
         # Put it on PATH for the rest of THIS script; ~/.local/bin is already on
-        # PATH for future interactive shells on Codespaces.
+        # PATH for future interactive shells on the workspace.
         export PATH="$HOME/.local/bin:$PATH"
         rm -f /tmp/nvim.tar.gz
         echo "nvim installed to $HOME/.local/${nvim_asset%.tar.gz}."
@@ -72,7 +71,7 @@ fi
 
 # ripgrep — telescope's live_grep / live_grep_args pickers (the ;ff and ;fc
 # maps) hard-require it; without a real `rg` on PATH they error out with
-# "'ripgrep' ... is a required dependency". The Codespace base image and a
+# "'ripgrep' ... is a required dependency". The workspace image and a
 # fresh Mac don't always ship it, so install it when missing. Best-effort like
 # the nvim block above: warn and carry on rather than aborting the whole
 # install. Guarded by `command -v rg` so re-runs are a no-op.
@@ -81,7 +80,7 @@ if ! command -v rg >/dev/null 2>&1; then
     if command -v brew >/dev/null 2>&1; then
         brew install ripgrep || echo "WARNING: 'brew install ripgrep' failed; install ripgrep manually so nvim ;ff works." >&2
     elif command -v apt-get >/dev/null 2>&1; then
-        # Codespaces base images grant passwordless sudo; ripgrep is in apt.
+        # Workspace images grant passwordless sudo; ripgrep is in apt.
         sudo apt-get update -y && sudo apt-get install -y ripgrep ||
             echo "WARNING: 'apt-get install ripgrep' failed; install ripgrep manually so nvim ;ff works." >&2
     else
@@ -120,25 +119,21 @@ if ! command -v difit >/dev/null 2>&1; then
     fi
 fi
 
-# Ghostty terminfo — when SSH'd into this codespace from Ghostty, TERM is
+# Ghostty terminfo — when SSH'd into this workspace from Ghostty, TERM is
 # xterm-ghostty, which the box doesn't know ("unknown terminal type"), breaking
 # clear/less/vim. Compile the bundled terminfo source into ~/.terminfo so those
-# work. (gh codespace ssh isn't wrapped by Ghostty's ssh-terminfo integration,
-# so we install it here instead.)
+# work. (`coder ssh` isn't wrapped by Ghostty's ssh-terminfo integration, so we
+# install it here instead.)
 if command -v tic >/dev/null 2>&1 && [ -f "$DOTFILES_ROOT/ghostty.terminfo" ]; then
     tic -x "$DOTFILES_ROOT/ghostty.terminfo" 2>/dev/null || true
 fi
 
-# shared bashrc and zshrc config
-if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.bashrc.append; then
-    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.bashrc.append
-fi
+# Hook the dotfiles into the shell rc files. .zshrc.append and .bashrc.append
+# each source .sharedrc.append themselves (committed in the repo), so only the
+# home-dir rc files get appended to — never files inside this checkout, which
+# would leave the repo dirty and block reload_dotfiles' fast-forward pull.
 
-if ! grep -q "# DOTFILES CUSTOM SHARED SHELL CONFIG" $DOTFILES_ROOT/.zshrc.append; then
-    echo -e "\n# DOTFILES CUSTOM SHARED SHELL CONFIG \nsource $DOTFILES_ROOT/.sharedrc.append" >> $DOTFILES_ROOT/.zshrc.append
-fi
-
-# Append custom zshrc without losing Codespaces defaults
+# Append custom zshrc without losing the image's defaults
 if ! grep -q "# DOTFILES CUSTOM ZSHRC" ~/.zshrc; then
     echo -e "\n# DOTFILES CUSTOM ZSHRC\nsource $DOTFILES_ROOT/.zshrc.append" >> ~/.zshrc
 fi
@@ -167,12 +162,12 @@ if [ -f ~/.bashrc ] && [ -f /etc/skel/.bashrc ] && ! bash -n ~/.bashrc 2>/dev/nu
     fi
 fi
 
-# Append custom bashrc without losing Codespaces defaults
+# Append custom bashrc without losing the image's defaults
 if ! grep -q "# DOTFILES CUSTOM BASHRC" ~/.bashrc; then
     echo -e "\n# DOTFILES CUSTOM BASHRC\nsource $DOTFILES_ROOT/.bashrc.append" >> ~/.bashrc
 fi
 
-# Codespace CLAUDE.md guidance — teach every Claude agent on this box the
+# Workspace CLAUDE.md guidance — teach every Claude agent on this box the
 # worktree/run rules (only /workspaces/web can run the site + aliases). The
 # guidance file now lives in the synced claude-settings repo (versioned with the
 # rest of the Claude config), not in dotfiles. We surface it on THIS box only:
@@ -195,31 +190,18 @@ if ! grep -qF "<!-- dotfiles:codespace-worktree-guidance -->" "$CLAUDE_MEMORY"; 
         "$HOME/.claude/codespace-worktree.md" >> "$CLAUDE_MEMORY"
 fi
 
-# Obsidian vault — the notes vault lives on the Mac, which the codespace can't
+# Obsidian vault — the notes vault lives on the Mac, which the workspace can't
 # see, so clone the separate GitHub repo onto the box and expose it to every
 # Claude session as an additional readable directory (no manual /add-dir).
 # Best-effort: git/jq failures warn but don't abort the rest of install.sh (the
 # ops live inside the `if` so `set -e` treats a failure as a false branch). The
-# `git pull` only runs on codespace create/reload — use `reload_dotfiles` (or a
+# `git pull` only runs on workspace create/rebuild — use `reload_dotfiles` (or a
 # manual pull) to refresh mid-life.
 VAULT_DIR="$HOME/rover-vault"
 VAULT_REPO="jacksonfoster4-rover/rover-vault"
-# A codespace's default gh/GITHUB_TOKEN is scoped to the source repo + its org and
-# CANNOT read a private repo under my personal account, so there we authenticate with
-# a fine-grained PAT exposed as the ROVER_VAULT_TOKEN Codespaces secret. Anywhere else
-# (a Coder/Roverspace workspace, a local box) the ambient gh login is a token on my own
-# account, which can read it — so hand the clone to `gh` and skip the PAT entirely.
+# On a Coder workspace the ambient gh login is a token on my own account, which
+# can read the private vault repo, so the clone goes through `gh`.
 clone_vault() {
-    if [ "${CODESPACES:-}" = "true" ]; then
-        if [ -z "${ROVER_VAULT_TOKEN:-}" ]; then
-            echo "WARNING: ROVER_VAULT_TOKEN not set — skipping rover-vault clone. Add it as a Codespaces secret (fine-grained PAT, Contents: read+write)." >&2
-            return 1
-        fi
-        # Embed the token in the remote URL so the Stop-hook's later pull/push also
-        # authenticate without any extra credential-helper setup.
-        git clone "https://oauth2:${ROVER_VAULT_TOKEN}@github.com/${VAULT_REPO}.git" "$VAULT_DIR"
-        return
-    fi
     if ! command -v gh >/dev/null 2>&1; then
         echo "WARNING: gh not installed — skipping rover-vault clone." >&2
         return 1

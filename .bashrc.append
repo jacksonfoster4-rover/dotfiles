@@ -1,0 +1,5 @@
+# Bash-only shell config, sourced from ~/.bashrc by install.sh.
+
+# Shared bash+zsh config. BASH_SOURCE[0] is the path of THIS file, so this works
+# wherever the repo is cloned.
+source "$(dirname "${BASH_SOURCE[0]}")/.sharedrc.append"
